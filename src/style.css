@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/* 基础颜色系统 */
+:root {
+  /* 蓝色系 */
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-200: #bfdbfe;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+
+  /* 自定义蓝色系 (Document页面) */
+  --color-custom-blue-100: #e7edf4;
+  --color-custom-blue-500: #0c7ff2;
+  --color-custom-blue-600: #49739c;
+
+  /* 灰色系 */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-900: #111827;
+
+  /* 中性色系 */
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-600: #475569;
+  --color-slate-900: #0f172a;
+
+  /* 语义化变量 - 默认主题 */
+  --primary-color: var(--color-blue-500);
+  --secondary-color: var(--color-gray-200);
+  --text-primary: var(--color-gray-900);
+  --text-secondary: var(--color-gray-600);
+  --background-color: var(--color-gray-50);
+  --border-color: var(--color-gray-200);
+  --input-border-color: var(--color-gray-200);
+  --input-focus-border-color: var(--color-blue-500);
+  --accent-color: var(--color-blue-500);
+}
+
+/* 全局字体设置 */
+body {
+  font-family: 'Inter', sans-serif;
+}

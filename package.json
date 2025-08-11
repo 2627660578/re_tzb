@@ -1,0 +1,33 @@
+{
+  "name": "my-project",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "@tiptap/starter-kit": "^3.0.9",
+    "@tiptap/vue-3": "^3.0.9",
+    "axios": "^1.11.0",
+    "dompurify": "^3.2.6",
+    "file-saver": "^2.0.5",
+    "html2pdf.js": "^0.10.3",
+    "marked": "^16.1.2",
+    "package.json": "^2.0.1",
+    "tailwindcss": "^4.1.11",
+    "tiptap-markdown": "^0.8.10",
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/tsconfig": "^0.7.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4",
+    "vue-tsc": "^2.2.12"
+  }
+}
