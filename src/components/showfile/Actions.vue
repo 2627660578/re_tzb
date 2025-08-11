@@ -90,6 +90,8 @@ const handleDownload = (format) => {
 /* Dropdown */
 .dropdown-container {
   position: relative;
+  padding-bottom: 0.5rem; /* 为菜单腾出空间 */
+  margin-bottom: -0.5rem; /* 抵消padding-bottom对布局的影响 */
 }
 
 .download-btn {
@@ -109,7 +111,7 @@ const handleDownload = (format) => {
 .dropdown-menu {
   position: absolute;
   width: 100%;
-  margin-top: 0.25rem;
+  top: calc(100% - 0.5rem);
   background-color: white;
   border-radius: 0.375rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
