@@ -193,16 +193,15 @@ export const useDocumentStore = defineStore('document', () => {
       const token = _getAuthToken();
       const details = await conversationsApi.getConversationDetails(conversationId, token);
 
-      // --- 在这里添加日志 ---
-      console.log('[Store 层] 从 API 层接收到的 details:', details);
 
 
-      // 我们只关心 user 和 assistant 的对话
-      revisionHistory.value = details.history.filter(
-        msg => msg.role === 'user' || msg.role === 'assistant'
-      );
+      if (details && Array.isArray(details.history)) {
+        revisionHistory.value = details.history.filter(
+          msg => msg.role === 'user' || msg.role === 'assistant'
+        );
+      }
+      
     } catch (err: any) {
-      error.value = err.message;
       console.error('Failed to fetch revision history:', err);
     } finally {
       isHistoryLoading.value = false;

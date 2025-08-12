@@ -1,11 +1,12 @@
 <template>
-  <transition name="fade">
+  <transition name="modal">
     <div 
       v-if="isOpen" 
       class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
       @click.self="$emit('close')"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+      <!-- 内部的白色面板不再需要 transition 包裹 -->
+      <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
         <!-- Modal Header -->
         <div class="flex justify-between items-center p-4 border-b">
           <h3 class="text-lg font-semibold">修改历史</h3>
@@ -45,6 +46,7 @@
           </div>
         </div>
       </div>
+
     </div>
   </transition>
 </template>
@@ -76,10 +78,27 @@ defineEmits(['close'])
 </script>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active {
+.modal-enter-active,
+.modal-leave-active {
   transition: opacity 0.3s ease;
 }
-.fade-enter-from, .fade-leave-to {
+
+.modal-enter-from,
+.modal-leave-to {
   opacity: 0;
+}
+
+/* 让内容面板在过渡期间也有动画 */
+.modal-enter-active .modal-content {
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+.modal-leave-active .modal-content {
+  transition: all 0.2s ease-in;
+}
+
+.modal-enter-from .modal-content,
+.modal-leave-to .modal-content {
+  opacity: 0;
+  transform: scale(0.9) translateY(20px);
 }
 </style>
