@@ -288,10 +288,24 @@ const downloadDocument = async (format) => {
   }
 }
 
-const backToEditing = () => {
-  router.push('/documents');
-}
+const backToEditing = async () => {
+  const docId = route.params.id;
+  if (!docId) {
+    alert("错误：无法获取当前文档ID。");
+    return;
+  }
 
+  // 调用 store action 获取历史数据
+  const success = await documentStore.fetchAndSetHistoryData(docId);
+
+  if (success) {
+    // 成功获取数据后，跳转到创建页面
+    router.push('/create');
+  } else {
+    // 如果失败，提示用户
+    alert(`无法加载历史信息: ${documentStore.error}`);
+  }
+}
 </script>
 
 <style>

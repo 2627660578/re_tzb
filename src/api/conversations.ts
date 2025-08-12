@@ -26,7 +26,7 @@ export interface ConversationDetail {
   history: Message[];
 }
 
-// 新增：为最终文档接口定义类型
+// 为最终文档接口定义类型
 export interface FinalDocument {
   id: string;
   content: string;
@@ -74,7 +74,25 @@ export interface StreamEndData {
   message_id: string;
 }
 
+// 为 historydatas 接口定义响应类型
+export interface HistoryFileReference {
+  file_id: string;
+  filename: string;
+}
 
+export interface HistoryDataItem {
+  id: string;
+  documenttype: string;
+  information: string;
+  requests: string;
+  created_at: string;
+  references: HistoryFileReference[];
+}
+
+export interface HistoryDataResponse {
+  conversation_id: string;
+  items: HistoryDataItem[];
+}
 // --- API 请求函数 ---
 
 /**
@@ -254,7 +272,7 @@ export async function updateDocument(payload: UpdateRequest, token: string): Pro
 
 
 /**
- * 新增：在工作流中断后，发送用户编辑好的内容以继续流程（生成最终文档）
+ * 在工作流中断后，发送用户编辑好的内容以继续流程（生成最终文档）
  * 并处理流式响应
  * @param payload - 发送给API的数据
  * @param token - 用户的认证Token
@@ -317,4 +335,27 @@ export async function resumeAndGenerateDocument(
       }
     }
   }
+}
+
+/**
+ * 新增：获取指定会话第一个页面的基本信息
+ * @param conversationId - 会话ID
+ * @param token - 用户的认证Token
+ * @returns {Promise<HistoryDataResponse>}
+ */
+export async function getHistoryData(conversationId: string, token: string): Promise<HistoryDataResponse> {
+  const response = await fetch(`${API_BASE_URL}/historydatas/${conversationId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+    throw new Error(`Failed to fetch history data: ${errorData.message || response.statusText}`);
+  }
+
+  return response.json();
 }

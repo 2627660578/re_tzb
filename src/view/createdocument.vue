@@ -113,9 +113,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue'; // 导入 onMounted
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../store/auth';
+import { useDocumentStore } from '../store/document'; // 导入 document store
 
 // --- 类型定义 ---
 interface UploadedFile {
@@ -131,6 +132,7 @@ interface UploadedFile {
 // --- 响应式状态 ---
 const router = useRouter();
 const authStore = useAuthStore();
+const documentStore = useDocumentStore(); // 初始化 document store
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const isDragOver = ref(false);
 
@@ -150,6 +152,33 @@ const modal = reactive({
   title: '',
   message: '',
   showCloseButton: false,
+});
+
+// --- 生命周期钩子 ---
+onMounted(() => {
+  // 检查 store 中是否有历史数据
+  if (documentStore.historyData) {
+    const data = documentStore.historyData;
+
+    // 填充表单
+    formData.documentType = data.documenttype;
+    formData.requests = data.requests;
+    formData.information = data.information;
+
+    // 填充文件列表
+    uploadedFiles.value = data.references.map(ref => ({
+      tempId: `hist-${ref.file_id}`,
+      name: ref.filename,
+      progress: 100,
+      status: 'success',
+      statusText: '来自历史记录',
+      backendId: ref.file_id, // 注意：这里可能需要根据后端逻辑调整
+      url: ref.file_id, // 假设 file_id 就是 url 的一部分
+    }));
+
+    // **关键**：使用后立即清空 store 中的数据，防止下次进入时污染表单
+    documentStore.historyData = null;
+  }
 });
 
 // --- 方法 ---

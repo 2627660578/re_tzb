@@ -11,7 +11,7 @@ export const useDocumentStore = defineStore('document', () => {
   const isGenerating = ref(false); 
   const streamingContent = ref(''); 
   const error = ref<string | null>(null);
-
+  const historyData = ref<conversationsApi.HistoryDataItem | null>(null);
   // --- Actions ---
 
   /**
@@ -153,6 +153,31 @@ export const useDocumentStore = defineStore('document', () => {
     }
   };
 
+  /**
+ * 新增：获取历史数据并存储，用于页面跳转
+ * @param conversationId
+ * @returns {Promise<boolean>} - 返回是否成功
+ */
+  const fetchAndSetHistoryData = async (conversationId: string): Promise<boolean> => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const token = _getAuthToken();
+      const response = await conversationsApi.getHistoryData(conversationId, token);
+      if (response.items && response.items.length > 0) {
+        historyData.value = response.items[0];
+        return true;
+      }
+      throw new Error("No history data found for this conversation.");
+    } catch (err: any) {
+      error.value = err.message;
+      console.error('Failed to fetch history data:', err);
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
 
   return {
     // State
@@ -162,11 +187,13 @@ export const useDocumentStore = defineStore('document', () => {
     isGenerating,
     streamingContent, // 导出新状态
     error,
+    historyData,
     // Actions
     fetchConversations,
     fetchFinalDocument,
     generateDocumentFromChecklist,
     reviseDocumentWithAI,
     saveDocumentChanges,
+    fetchAndSetHistoryData,
   };
 });
