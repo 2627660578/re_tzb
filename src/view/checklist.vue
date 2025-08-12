@@ -68,6 +68,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useDocumentStore } from '../store/document'; // 导入 document store
 
 // --- 类型定义 ---
 interface Section {
@@ -82,9 +83,9 @@ interface ParsingSection {
 }
 // --- 响应式状态 ---
 const router = useRouter();
+const documentStore = useDocumentStore(); // 使用 store
 const sections = ref<Section[]>([]);
 const activeToolbar = ref<number | null>(null);
-
 // --- 方法 ---
 
 /**
@@ -168,17 +169,16 @@ const updateToolbarState = (event: Event, index: number) => {
 /**
  * 提交内容并跳转到下一页
  */
-const submitAndContinue = () => {
-  let contentParts: string[] = [];
+const submitAndContinue = async () => {
+  if (documentStore.isGenerating) return;
 
+  // ... (代码用于从编辑器收集 contentParts 和 finalContent) ...
+  let contentParts: string[] = [];
   sections.value.forEach(section => {
     contentParts.push(`### ${section.title.trim()}`);
-    
-    // 创建一个临时div来解析HTML并提取文本
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = section.contentHtml;
     const lineDivs = tempDiv.querySelectorAll('div');
-
     lineDivs.forEach(lineDiv => {
       const plainText = lineDiv.textContent?.trim();
       if (plainText) {
@@ -186,17 +186,28 @@ const submitAndContinue = () => {
       }
     });
   });
-
   const finalContent = contentParts.join('\n');
-  localStorage.setItem('docuCraftFinalContent', finalContent);
-
+  
   const conversationId = localStorage.getItem('docuCraftConversationId');
   if (!conversationId) {
     alert("错误：无法找到会话ID，无法继续。");
     return;
   }
 
-  router.push(`/showfile/${conversationId}`);
+  try {
+    // 调用 store action 来开始流式生成
+    await documentStore.generateDocumentFromChecklist({
+      conversation_id: conversationId,
+      content: finalContent,
+    });
+    
+    // 立即跳转到 showfile 页面，无需等待生成完成
+    router.push(`/showfile/${conversationId}`);
+
+  } catch (err: any) {
+    // 如果启动过程失败，显示错误
+    alert(`启动文档生成失败: ${err.message}`);
+  }
 };
 
 // --- 生命周期钩子 ---
@@ -205,20 +216,7 @@ onMounted(() => {
   if (checklistData) {
     parseChecklistData(checklistData);
   } else {
-    // 提供备用内容以供测试
-    const fallbackContent = `
-### 通知内容：
-- 通知目的：这是一个示例目的
-- 相关事项（具体内容）：这里是具体的示例内容
-- 时间（日期、具体时间段）：2025年8月18日 14:00-16:30
-- 地点（详细地址）：总部大楼三层会议室A
-- 参与人员/对象：各部门负责人及相关同事
-### 具体要求：
-- 需准备的材料或事项：请携带笔记本电脑
-- 着装或行为规范：请着正装
-- 其他注意事项（如签到、请假等）：请勿迟到，提前10分钟签到
-`;
-    parseChecklistData(fallbackContent);
+    console.error('未找到清单数据，请确保已正确保存。');
   }
 });
 </script>

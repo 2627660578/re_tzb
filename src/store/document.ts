@@ -8,6 +8,8 @@ export const useDocumentStore = defineStore('document', () => {
   const conversations = ref<conversationsApi.ConversationSummary[]>([]);
   const currentDocument = ref<conversationsApi.FinalDocument | null>(null);
   const isLoading = ref(false);
+  const isGenerating = ref(false); 
+  const streamingContent = ref(''); 
   const error = ref<string | null>(null);
 
   // --- Actions ---
@@ -107,16 +109,63 @@ export const useDocumentStore = defineStore('document', () => {
     }
   };
 
+  /**
+   * 新增：根据大纲生成最终文档
+   * @param {conversationsApi.GenerateDocumentRequest} payload
+   * @returns {Promise<boolean>} - 返回是否成功
+   */
+  /**
+    * 新增：调用 resume 接口，处理流式生成
+    * @param payload - 包含 conversation_id 和 content 的对象
+    * @returns {Promise<void>}
+    */
+  const generateDocumentFromChecklist = async (payload: conversationsApi.ResumeRequest): Promise<void> => {
+    isGenerating.value = true;
+    error.value = null;
+    streamingContent.value = ''; // 开始前清空
+    currentDocument.value = null; // 清空旧的最终文档
+
+    try {
+      const token = _getAuthToken();
+
+      const onChunkReceived = (chunk: string) => {
+        streamingContent.value = chunk;
+      };
+
+      const onEnd = (endData: conversationsApi.StreamEndData) => {
+        // 流结束时，将最终内容和ID更新到 currentDocument
+        currentDocument.value = {
+          id: endData.message_id,
+          content: streamingContent.value,
+          created_at: new Date().toISOString(),
+        };
+        isGenerating.value = false; // 标记生成过程结束
+      };
+
+      // 这个调用是异步的，但我们不需要 await 它完成，因为它会通过回调更新状态
+      conversationsApi.resumeAndGenerateDocument(payload, token, onChunkReceived, onEnd);
+
+    } catch (err: any) {
+      error.value = err.message;
+      isGenerating.value = false; // 出错时也要结束状态
+      console.error('Failed to trigger document generation:', err);
+      throw err; // 抛出错误，让调用方知道
+    }
+  };
+
 
   return {
     // State
     conversations,
     currentDocument,
     isLoading,
+    isGenerating,
+    streamingContent, // 导出新状态
     error,
     // Actions
     fetchConversations,
     fetchFinalDocument,
+    generateDocumentFromChecklist,
     reviseDocumentWithAI,
     saveDocumentChanges,
   };

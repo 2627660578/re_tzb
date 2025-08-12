@@ -9,13 +9,13 @@
             <p class="mt-1 text-gray-600">查看和管理您的生成文档。</p>
           </header>
 
-          <!-- 加载与错误状态 -->
-          <div v-if="isLoading" class="text-center py-10">
+          <!-- 加载与错误状态 (从 Store 获取) -->
+          <div v-if="documentStore.isLoading" class="text-center py-10">
             <p class="text-gray-500">Loading documents...</p>
           </div>
-          <div v-else-if="error" class="text-center py-10 bg-red-50 border border-red-200 rounded-lg">
+          <div v-else-if="documentStore.error" class="text-center py-10 bg-red-50 border border-red-200 rounded-lg">
             <p class="text-red-600 font-medium">Failed to load documents:</p>
-            <p class="text-red-500 mt-1">{{ error }}</p>
+            <p class="text-red-500 mt-1">{{ documentStore.error }}</p>
           </div>
 
           <div v-else class="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -68,7 +68,7 @@
                     <td class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                       <button 
                         class="text-blue-500 hover:text-blue-700"
-                        @click.stop="openModal(doc.conversation_id)"
+                        @click.stop="viewDocument(doc)"
                       >
                         View
                         <span class="sr-only">, {{ doc.title }}</span>
@@ -128,6 +128,7 @@ import { useRouter } from 'vue-router'
 import { getConversationsList, getConversationDetails } from '../api/conversations'
 import { useDocumentStore } from '../store/document'; // 导入新的 store
 
+
 const documentStore = useDocumentStore();
 const router = useRouter()
 
@@ -145,7 +146,8 @@ const modalError = ref(null)
 
 // --- 生命周期钩子 ---
 onMounted(() => {
-  fetchDocuments();
+  // 调用 store action 来获取数据，它会自动处理认证
+  documentStore.fetchConversations();
 });
 
 // --- 方法 ---
@@ -165,15 +167,17 @@ async function fetchDocuments() {
   }
 }
 
-// 计算属性：用于搜索过滤
+// --- 计算属性：用于搜索过滤 ---
 const filteredDocuments = computed(() => {
+  // 直接从 store 获取会话列表
+  const docs = documentStore.conversations;
   if (!searchQuery.value) {
-    return documents.value
+    return docs;
   }
-  return documents.value.filter(doc => 
+  return docs.filter(doc => 
     doc.title.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
-})
+  );
+});
 
 // 格式化日期
 const formatDate = (dateString) => {
@@ -184,42 +188,42 @@ const formatDate = (dateString) => {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
-  })
-}
+  });
+};
 
 // 导航到文档编辑/查看页面
 const viewDocument = (doc) => {
   router.push(`/showfile/${doc.conversation_id}`)
 }
 
-// 打开模态框并加载内容
-const openModal = async (conversationId) => {
-  isModalOpen.value = true
-  modalContentLoading.value = true
-  modalError.value = null
-  selectedDocument.value = null
+// // 打开模态框并加载内容
+// const openModal = async (conversationId) => {
+//   isModalOpen.value = true
+//   modalContentLoading.value = true
+//   modalError.value = null
+//   selectedDocument.value = null
 
-  try {
-    const details = await getConversationDetails(conversationId)
-    // 从历史消息中找到最终文档
-    const finalDocMessage = details.history.find(msg => msg.content_type === 'final_document');
+//   try {
+//     const details = await getConversationDetails(conversationId)
+//     // 从历史消息中找到最终文档
+//     const finalDocMessage = details.history.find(msg => msg.content_type === 'final_document');
     
-    selectedDocument.value = {
-      title: details.title,
-      content: finalDocMessage ? finalDocMessage.content : '<p>No final document content available.</p>'
-    }
-  } catch (e) {
-    modalError.value = e.message
-  } finally {
-    modalContentLoading.value = false
-  }
-}
+//     selectedDocument.value = {
+//       title: details.title,
+//       content: finalDocMessage ? finalDocMessage.content : '<p>No final document content available.</p>'
+//     }
+//   } catch (e) {
+//     modalError.value = e.message
+//   } finally {  
+//     modalContentLoading.value = false
+//   }
+// }
 
-// 关闭模态框
-const closeModal = () => {
-  isModalOpen.value = false
-  selectedDocument.value = null
-}
+// // 关闭模态框
+// const closeModal = () => {
+//   isModalOpen.value = false
+//   selectedDocument.value = null
+// }
 </script>
 
 <style scoped>

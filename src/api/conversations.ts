@@ -56,7 +56,24 @@ export interface UpdateRequest {
   prompt: string; // prompt 在这里是完整的文档内容
 }
 
-// --- 辅助函数 ---
+//为最终文档生成接口定义请求类型
+export interface GenerateDocumentRequest {
+  conversation_id: string;
+  content: string; // 这里是用户确认后的大纲内容
+}
+
+// 为 resume 接口定义请求和响应类型
+export interface ResumeRequest {
+  conversation_id: string;
+  content: string;
+  template_id?: string;
+}
+
+export interface StreamEndData {
+  conversation_id: string;
+  message_id: string;
+}
+
 
 // --- API 请求函数 ---
 
@@ -233,4 +250,71 @@ export async function updateDocument(payload: UpdateRequest, token: string): Pro
   }
 
   return response.json();
+}
+
+
+/**
+ * 新增：在工作流中断后，发送用户编辑好的内容以继续流程（生成最终文档）
+ * 并处理流式响应
+ * @param payload - 发送给API的数据
+ * @param token - 用户的认证Token
+ * @param onChunkReceived - 每次收到内容片段时调用的回调函数
+ * @param onEnd - 流结束时调用的回调函数
+ */
+export async function resumeAndGenerateDocument(
+  payload: ResumeRequest,
+  token: string,
+  onChunkReceived: (chunk: string) => void,
+  onEnd: (endData: StreamEndData) => void
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/chat/resume`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to resume and generate document (HTTP ${response.status}): ${errorText}`);
+  }
+
+  if (!response.body) {
+    throw new Error("Response body is empty.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let accumulatedContent = '';
+  let leftover = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = leftover + decoder.decode(value, { stream: true });
+    const messages = chunk.split('\n\n');
+    leftover = messages.pop() || '';
+
+    for (const message of messages) {
+      if (!message) continue;
+
+      const eventMatch = message.match(/^event: (.*)$/m);
+      const dataMatch = message.match(/^data: (.*)$/m);
+
+      if (eventMatch && dataMatch) {
+        const event = eventMatch[1];
+        const data = JSON.parse(dataMatch[1]);
+
+        if (event === 'message') {
+          accumulatedContent += data.chunk || '';
+          onChunkReceived(accumulatedContent); // 实时更新UI
+        } else if (event === 'end') {
+          onEnd(data as StreamEndData); // 流结束
+        }
+      }
+    }
+  }
 }

@@ -33,7 +33,7 @@
         <!-- 用户区域 -->
         <div class="flex items-center gap-4">
           <!-- 如果已登录，显示用户菜单 -->
-          <div v-if="authStore.isAuthenticated" class="relative">
+          <div v-if="authStore.isAuthenticated" class="relative" ref="userMenuContainer">
             <div 
               class="bg-cover bg-center rounded-full size-10 cursor-pointer hover:ring-2 hover:ring-[var(--primary-color)] hover:ring-offset-2 transition-all" 
               :style="{ backgroundImage: `url(${userAvatar})` }"
@@ -41,7 +41,7 @@
             ></div>
             <!-- 用户下拉菜单 -->
             <transition name="fade">
-              <div v-if="isUserMenuOpen" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-40">
+              <div v-if="isUserMenuOpen" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-40">
                 <div class="py-1">
                   <div class="px-4 py-2 text-sm text-gray-700 border-b">
                     <p class="font-semibold">{{ authStore.user?.name || '用户' }}</p>
@@ -66,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '../store/auth'
 import { useRouter } from 'vue-router'
 
@@ -79,6 +79,8 @@ const navigation = ref([
 ])
 
 const isUserMenuOpen = ref(false)
+const userMenuContainer = ref<HTMLElement | null>(null) // 创建模板引用
+
 
 // 计算用户头像，如果用户没有设置头像，则使用一个默认的SVG占位符
 const userAvatar = computed(() => {
@@ -90,6 +92,21 @@ const handleLogout = () => {
   isUserMenuOpen.value = false
   router.push('/login')
 }
+
+// --- 新增：处理外部点击的逻辑 ---
+const handleClickOutside = (event: MouseEvent) => {
+  if (userMenuContainer.value && !userMenuContainer.value.contains(event.target as Node)) {
+    isUserMenuOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
