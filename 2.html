@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>DocuCraft - 动态文档生成</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <style type="text/tailwindcss">
+        :root {
+            /* --- 颜色变量定义 --- */
+            --primary-color: #dce8f3;
+            --text-primary: #111827; /* 主要标题和重要文本 */
+            --text-strong: #374151;  /* 统一的深色/加粗文本 */
+            --text-secondary: #6b7280; /* 统一的浅色/常规文本 */
+            --background-color: #f9fafb;
+            --border-color: #e5e7eb;
+            --accent-color: #3b82f6;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+        }
+        .btn-primary {
+            @apply w-full rounded-lg bg-[var(--accent-color)] px-6 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+        }
+        .btn-secondary {
+            @apply rounded-lg bg-[var(--primary-color)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2;
+        }
+        /* --- 编辑器样式更新 --- */
+        .dynamic-content-editor {
+            @apply w-full text-base bg-white focus:outline-none focus:ring-0 border-none p-0 leading-relaxed transition-all duration-200;
+            color: var(--text-secondary); /* 默认输入文字为浅色 */
+            min-height: 80px;
+        }
+        /* 默认的二级标题（strong/b标签）使用统一的深色和加粗样式 */
+        .dynamic-content-editor strong, .dynamic-content-editor b {
+            font-weight: 600;
+            color: var(--text-strong); 
+        }
+        .dynamic-title-input {
+            @apply w-full text-xl font-bold text-[var(--text-primary)] bg-transparent focus:outline-none focus:ring-0 border-none p-0;
+        }
+        /* --- 格式刷（加粗按钮）工具栏新样式 --- */
+        .formatting-toolbar {
+            @apply flex items-center;
+        }
+        .formatting-toolbar button {
+            @apply flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-lg font-bold text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1;
+        }
+        /* 加粗按钮激活时的样式 */
+        .formatting-toolbar button.active {
+            @apply bg-blue-100 text-blue-600;
+        }
+        /* --- 标题与工具栏的容器 --- */
+        .title-toolbar-wrapper {
+            @apply flex items-center justify-between gap-4 p-4 border-b border-[var(--border-color)];
+        }
+    </style>
+</head>
+
+<body class="text-gray-800">
+    <div class="relative flex min-h-screen flex-col">
+        <!-- 页面头部 -->
+        <header class="sticky top-0 z-10 w-full border-b border-[var(--border-color)] bg-white/80 backdrop-blur-md">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex h-16 items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <a class="flex items-center gap-2" href="#">
+                            <svg class="h-6 w-6 text-[var(--accent-color)]" fill="none" viewBox="0 0 48 48"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6 6H42L36 24L42 42H6L12 24L6 6Z" fill="currentColor"></path>
+                            </svg>
+                            <span class="text-xl font-bold tracking-tight text-[var(--text-primary)]">DocuCraft</span>
+                        </a>
+                    </div>
+                    <nav class="hidden items-center gap-8 md:flex">
+                        <a class="text-sm font-medium text-gray-500 hover:text-gray-900" href="#">模板</a>
+                        <a class="text-sm font-medium text-gray-500 hover:text-gray-900" href="#">文档</a>
+                        <a class="text-sm font-medium text-gray-500 hover:text-gray-900" href="#">帮助</a>
+                    </nav>
+                    <div class="flex items-center gap-4">
+                        <button class="btn-secondary hidden sm:block">新文档</button>
+                        <div class="h-10 w-10 rounded-full bg-cover bg-center"
+                            style='background-image: url("https://placehold.co/40x40/dce8f3/111827?text=U");'></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区域 -->
+        <main class="flex-grow">
+            <div class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+                <div class="space-y-6">
+                    <!-- 面包屑导航和标题 -->
+                    <div>
+                        <nav aria-label="Breadcrumb" class="text-sm">
+                            <ol class="flex items-center space-x-2 text-gray-500">
+                                <li><a class="hover:text-gray-900" href="#">文档</a></li>
+                                <li>
+                                    <svg aria-hidden="true" class="h-5 w-5 flex-shrink-0" fill="currentColor"
+                                        viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z"></path>
+                                    </svg>
+                                </li>
+                                <li><span class="font-medium text-[var(--text-primary)]">动态内容清单</span></li>
+                            </ol>
+                        </nav>
+                        <div class="mt-2">
+                            <h1 class="text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+                                文档内容清单</h1>
+                            <p class="mt-2 text-lg text-gray-600">请确认或更新以下信息。这些内容将用于生成您的正式文档。</p>
+                        </div>
+                    </div>
+
+                    <!-- 动态表单容器 -->
+                    <div id="dynamic-form-container" class="space-y-6">
+                        <!-- JavaScript将在此处动态生成内容 -->
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="flex justify-end pt-4">
+                        <button id="continue-button" class="btn-primary" type="button">确认并继续</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 加粗按钮工具栏模板 (默认隐藏) -->
+    <div id="formatting-toolbar-template" class="hidden">
+        <div class="formatting-toolbar">
+            <button title="加粗 (Ctrl+B)">B</button>
+        </div>
+    </div>
+
+
+    <script>
+        /**
+         * 更新工具栏按钮的状态（是否激活）
+         * @param {HTMLElement} button - 需要更新状态的按钮元素
+         */
+        function updateToolbarState(button) {
+            if (document.queryCommandState('bold')) {
+                button.classList.add('active');
+            } else {
+                button.classList.remove('active');
+            }
+        }
+
+        /**
+         * 解析文本数据并渲染成动态表单
+         * @param {string} data - 从后端获取的格式化文本
+         */
+        function parseAndRenderForm(data) {
+            const container = document.getElementById('dynamic-form-container');
+            if (!container) return;
+
+            container.innerHTML = ''; // 渲染前清空容器
+
+            const lines = data.trim().split('\n');
+            let sections = [];
+            let currentSection = null;
+
+            // 1. 解析原始文本数据
+            lines.forEach(line => {
+                const trimmedLine = line.trim();
+                if (trimmedLine.startsWith('### ')) {
+                    if (currentSection) sections.push(currentSection);
+                    currentSection = { title: trimmedLine.replace('### ', '').replace(/：$/, ''), content: [] };
+                } else if (currentSection && trimmedLine.startsWith('- ')) {
+                    currentSection.content.push(trimmedLine.replace(/^- \s*/, ''));
+                }
+            });
+            if (currentSection) sections.push(currentSection);
+
+            // 如果没有解析到内容，显示提示信息
+            if (sections.length === 0) {
+                container.innerHTML = `<div class="bg-white border border-dashed border-yellow-400 rounded-xl shadow-sm p-6 text-center">
+                        <h3 class="text-lg font-medium text-yellow-800">未收到有效内容</h3>
+                        <p class="mt-1 text-sm text-yellow-700">未能解析出有效的内容清单，请返回上一页重试。</p>
+                       </div>`;
+                return;
+            }
+
+            // 2. 遍历解析后的数据，生成每个卡片
+            sections.forEach(section => {
+                const sectionWrapper = document.createElement('div');
+                sectionWrapper.className = 'bg-white border border-[var(--border-color)] rounded-xl shadow-sm transition-all hover:shadow-md';
+
+                const titleToolbarWrapper = document.createElement('div');
+                titleToolbarWrapper.className = 'title-toolbar-wrapper';
+
+                const titleInput = document.createElement('input');
+                titleInput.type = 'text';
+                titleInput.value = section.title;
+                titleInput.className = 'dynamic-title-input';
+
+                // 克隆并设置加粗工具栏
+                const toolbarTemplate = document.getElementById('formatting-toolbar-template');
+                const toolbarClone = toolbarTemplate.firstElementChild.cloneNode(true);
+                const boldButton = toolbarClone.querySelector('button');
+
+                titleToolbarWrapper.appendChild(titleInput);
+                titleToolbarWrapper.appendChild(toolbarClone);
+
+                const contentContainer = document.createElement('div');
+                contentContainer.className = 'p-4';
+
+                const contentEditor = document.createElement('div');
+                contentEditor.setAttribute('contenteditable', 'true');
+                contentEditor.className = 'dynamic-content-editor';
+
+                const contentHtml = section.content.map(line => {
+                    const colonIndex = line.indexOf('：');
+                    if (colonIndex !== -1) {
+                        const label = line.substring(0, colonIndex);
+                        const value = line.substring(colonIndex + 1);
+                        // <strong> 标签会自动应用CSS中定义的深色和加粗样式
+                        return `<div><strong>${label}：</strong>${value}</div>`;
+                    }
+                    return `<div>${line}</div>`;
+                }).join('');
+                contentEditor.innerHTML = contentHtml;
+
+                // --- 事件监听 ---
+                // 点击按钮时，执行加粗命令
+                boldButton.addEventListener('mousedown', (e) => {
+                    e.preventDefault(); // 阻止编辑器失去焦点
+                    document.execCommand('bold', false, null);
+                    updateToolbarState(boldButton); // 立即更新按钮状态
+                });
+
+                // 在编辑器中释放鼠标或键盘时，检查光标位置的样式并更新按钮状态
+                contentEditor.addEventListener('mouseup', () => updateToolbarState(boldButton));
+                contentEditor.addEventListener('keyup', () => updateToolbarState(boldButton));
+                contentEditor.addEventListener('focus', () => updateToolbarState(boldButton));
+
+                // 将所有元素组装到卡片中
+                contentContainer.appendChild(contentEditor);
+                sectionWrapper.appendChild(titleToolbarWrapper);
+                sectionWrapper.appendChild(contentContainer);
+                container.appendChild(sectionWrapper);
+            });
+        }
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. 渲染从 localStorage 获取的表单数据
+            const checklistData = localStorage.getItem('docuCraftChecklist');
+            if (checklistData) {
+                parseAndRenderForm(checklistData);
+            } else {
+                // 如果 localStorage 中没有数据，则使用备用内容
+                const fallbackContent = `
+### 通知内容：
+- 通知目的：这是一个示例目的
+- 相关事项（具体内容）：这里是具体的示例内容
+- 时间（日期、具体时间段）：2025年8月18日 14:00-16:30
+- 地点（详细地址）：总部大楼三层会议室A
+- 参与人员/对象：各部门负责人及相关同事
+
+### 具体要求：
+- 需准备的材料或事项：请携带笔记本电脑
+- 着装或行为规范：请着正装
+- 其他注意事项（如签到、请假等）：请勿迟到，提前10分钟签到
+`;
+                parseAndRenderForm(fallbackContent);
+            }
+
+            // 2. **MODIFICATION**: 为“确认并继续”按钮添加事件监听器
+            const continueButton = document.getElementById('continue-button');
+            if (continueButton) {
+                continueButton.addEventListener('click', () => {
+                    const container = document.getElementById('dynamic-form-container');
+                    // 选择所有由 parseAndRenderForm 函数创建的卡片
+                    const sections = container.querySelectorAll('.bg-white.border.rounded-xl');
+                    let contentParts = [];
+
+                    sections.forEach(section => {
+                        const titleInput = section.querySelector('.dynamic-title-input');
+                        const contentEditor = section.querySelector('.dynamic-content-editor');
+
+                        if (titleInput && contentEditor) {
+                            // 添加段落标题，格式为 "### 标题"
+                            contentParts.push(`### ${titleInput.value.trim()}`);
+
+                            // 内容编辑器中的每一行都是一个 div
+                            const lineDivs = contentEditor.querySelectorAll('div');
+                            lineDivs.forEach(lineDiv => {
+                                // .textContent 会正确地提取出 <strong> 和普通文本
+                                const plainText = lineDiv.textContent.trim();
+                                if (plainText) {
+                                    contentParts.push(`- ${plainText}`);
+                                }
+                            });
+                        }
+                    });
+
+                    const finalContent = contentParts.join('\n');
+
+                    // 将最终编辑好的内容存储到 localStorage，供下一页使用
+                    localStorage.setItem('docuCraftFinalContent', finalContent);
+
+                    // 检查 conversation_id 是否存在，确保流程完整
+                    const conversationId = localStorage.getItem('docuCraftConversationId');
+                    if (!conversationId) {
+                        // 在实际应用中，这里应该显示一个用户友好的错误提示
+                        console.error("错误：无法在 localStorage 中找到 'docuCraftConversationId'。无法继续。");
+                        // 阻止跳转
+                        return;
+                    }
+                    // 构建指向 Vue Router 中定义的正确路由
+                    const targetUrl = `/showfile/${conversationId}`;
+                    // **修改部分结束**
+
+                    // 跳转到第三个页面
+                    console.log(`内容已保存，conversation_id 已确认，正在跳转到: ${targetUrl}`);
+                    window.location.href = targetUrl;// 确保你有一个名为 3.html 的文件
+                });
+            } else {
+                console.error('未能找到 "确认并继续" 按钮。');
+            }
+        });
+    </script>
+</body>
+
+</html>

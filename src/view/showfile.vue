@@ -90,13 +90,31 @@ const downloadOptions = ref([
 
 // --- 生命周期钩子 ---
 onMounted(() => {
-  const conversationId = route.params.id;
-  if (conversationId) {
-    fetchDocument(conversationId);
+  // **修改部分开始**
+  // 检查 localStorage 中是否存在从 2.html 传递过来的最终内容
+  const finalContent = localStorage.getItem('docuCraftFinalContent');
+  const conversationId = localStorage.getItem('docuCraftConversationId');
+
+  if (finalContent && conversationId) {
+    // 如果存在，说明是从第二步跳转过来的，需要开始生成最终文档
+    console.log("检测到 finalContent，开始生成最终文档...");
+    isLoading.value = true; // 显示加载状态
+    startDocumentGeneration(conversationId, finalContent);
+
+    // 清理 localStorage，防止下次直接访问此页面时重复生成
+    localStorage.removeItem('docuCraftFinalContent');
+    // conversationId 暂时保留，因为后续的修订和保存可能还需要
   } else {
-    error.value = 'No document ID found in URL.';
-    isLoading.value = false;
+    // 否则，按原逻辑获取已存在的文档
+    const docId = route.params.id;
+    if (docId) {
+      fetchDocument(docId);
+    } else {
+      error.value = 'No document ID found in URL.';
+      isLoading.value = false;
+    }
   }
+  // **修改部分结束**
 });
 
 // 监听文档内容变化以触发自动保存 ---
@@ -272,6 +290,130 @@ const downloadDocument = async (format) => {
 const backToEditing = () => {
   router.push('/documents');
 }
+
+/**
+ * 启动最终文档的生成流程。
+ * 此函数会从 localStorage 获取必要的数据，
+ * 然后向后端 API 发送请求以接收流式文档内容。
+ */
+async function startDocumentGeneration() {
+    // --- 1. 从 localStorage 获取数据 ---
+    // 使用 localStorage.getItem() 方法，通过之前页面设定的键名来获取存储的值。
+    const conversationId = localStorage.getItem('docuCraftConversationId');
+    const finalContent = localStorage.getItem('docuCraftFinalContent');
+
+    // --- 2. 验证数据是否存在 ---
+    // 这是一个重要的健壮性检查，确保流程所需的前置数据都已到位。
+    if (!conversationId || !finalContent) {
+        console.error("错误：关键会话信息丢失，无法生成文档。请返回第一步重试。");
+        // 在实际应用中，您应该在这里向用户显示一个友好的错误提示。
+        // 例如: document.getElementById('error-message').textContent = "关键信息丢失...";
+        return; // 终止函数执行
+    }
+
+    // (可选) 在控制台打印获取到的数据，方便调试
+    console.log("获取到的 Conversation ID:", conversationId);
+    console.log("获取到的最终内容:", finalContent);
+    
+    // 这是一个示例 JWT 令牌，实际应用中应从登录认证流程中动态获取
+    const jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODUyNDU3NzUsImlhdCI6MTc1MzcwOTc3NSwiand0VXNlcklkIjoxfQ.JYvVjxRbWuwXMHTwowExQIL1liYMDhLuwHQ668-PvAo';
+
+
+    // --- 3. 准备并发送请求 ---
+    // 根据接口文档构建请求体 (payload)
+    const payload = {
+        conversation_id: conversationId,
+        content: finalContent,
+        // template_id 是可选的，如果您的应用需要，可以在这里添加
+        // template_id: "tpl_123" 
+    };
+
+    try {
+        // 使用 Fetch API 发送 POST 请求
+        const response = await fetch('http://47.98.215.181:8010/llmcenter/v1/chat/resume', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${jwtToken}` // 根据接口要求添加认证头
+            },
+            body: JSON.stringify(payload) // 将 JavaScript 对象转换为 JSON 字符串
+        });
+
+        // 检查响应状态码，如果不是 2xx，则抛出错误
+        if (!response.ok) {
+            // 尝试解析错误响应体以获取更详细的错误信息
+            const errorData = await response.json().catch(() => ({}));
+            const message = errorData.msg || `HTTP 错误: ${response.status}`;
+            throw new Error(message);
+        }
+
+        // --- 4. 处理流式响应 (Server-Sent Events) ---
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullContent = ''; // 用于拼接所有收到的文本块
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) {
+                console.log("数据流接收完毕。");
+                break; // 当流结束时，退出循环
+            }
+
+            // 将接收到的二进制数据块解码为字符串，并追加到缓冲区
+            buffer += decoder.decode(value, { stream: true });
+            
+            // SSE 事件以 `\n\n` 分隔，所以按此分割来处理每个事件块
+            const parts = buffer.split('\n\n');
+            buffer = parts.pop(); // 最后一个元素可能是不完整的事件，将其放回缓冲区等待下一次数据
+
+            for (const part of parts) {
+                const eventLine = part.split('\n').find(line => line.startsWith('event:'));
+                const dataLine = part.split('\n').find(line => line.startsWith('data:'));
+
+                if (eventLine && dataLine) {
+                    const eventType = eventLine.substring(6).trim();
+                    const dataJson = dataLine.substring(5).trim();
+
+                    try {
+                        const data = JSON.parse(dataJson);
+                        
+                        // 根据事件类型处理数据
+                        if (eventType === 'message' && data.chunk) {
+                            // 将新的文本块拼接到完整内容上
+                            fullContent += data.chunk;
+                            // **在这里更新你的UI**
+                            updateDocumentContent(fullContent);
+                            isLoading.value = false; // 收到第一个数据块后，停止全局加载动画
+
+                        } else if (eventType === 'end') {
+                            console.log('收到结束事件:', data);
+                            // 流结束后，用最终的ID和时间更新状态
+                            if(data.id) {
+                                documentMessageId.value = data.id;
+                            }
+                            if(data.created_at) {
+                                documentUpdatedAt.value = data.created_at;
+                            }
+                            saveStatus.value = 'saved'; // AI生成后也标记为已保存
+                        }
+                    } catch (e) {
+                        console.error("解析流数据失败:", e, "原始数据:", dataJson);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('请求或处理流时出错:', error);
+        // 在这里向用户显示错误信息
+        // document.getElementById('error-message').textContent = error.message;
+        self.error.value = error.message;
+        isLoading.value = false;
+    }
+}
+
+// 当页面DOM加载完成后，自动调用此函数
+// document.addEventListener('DOMContentLoaded', startDocumentGeneration);
 </script>
 
 <style>

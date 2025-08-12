@@ -126,7 +126,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getConversationsList, getConversationDetails } from '../api/conversations'
+import { useDocumentStore } from '../store/document'; // 导入新的 store
 
+const documentStore = useDocumentStore();
 const router = useRouter()
 
 // --- 响应式数据 ---

@@ -18,6 +18,7 @@
     "html2pdf.js": "^0.10.3",
     "marked": "^16.1.2",
     "package.json": "^2.0.1",
+    "pinia": "^3.0.3",
     "tailwindcss": "^4.1.11",
     "tiptap-markdown": "^0.8.10",
     "vue": "^3.5.17",
