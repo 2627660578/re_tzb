@@ -12,6 +12,9 @@ export const useDocumentStore = defineStore('document', () => {
   const streamingContent = ref(''); 
   const error = ref<string | null>(null);
   const historyData = ref<conversationsApi.HistoryDataItem | null>(null);
+  const revisionHistory = ref<conversationsApi.Message[]>([]);
+  const isHistoryLoading = ref(false); // 为历史记录加载添加独立的状态
+
   // --- Actions ---
 
   /**
@@ -178,6 +181,34 @@ export const useDocumentStore = defineStore('document', () => {
     }
   };
 
+  /**
+ * 新增：获取修订历史记录
+ * @param conversationId
+ */
+  const fetchRevisionHistory = async (conversationId: string) => {
+    isHistoryLoading.value = true;
+    error.value = null;
+    revisionHistory.value = [];
+    try {
+      const token = _getAuthToken();
+      const details = await conversationsApi.getConversationDetails(conversationId, token);
+
+      // --- 在这里添加日志 ---
+      console.log('[Store 层] 从 API 层接收到的 details:', details);
+
+
+      // 我们只关心 user 和 assistant 的对话
+      revisionHistory.value = details.history.filter(
+        msg => msg.role === 'user' || msg.role === 'assistant'
+      );
+    } catch (err: any) {
+      error.value = err.message;
+      console.error('Failed to fetch revision history:', err);
+    } finally {
+      isHistoryLoading.value = false;
+    }
+  };
+
 
   return {
     // State
@@ -188,6 +219,8 @@ export const useDocumentStore = defineStore('document', () => {
     streamingContent, // 导出新状态
     error,
     historyData,
+    revisionHistory,
+    isHistoryLoading,
     // Actions
     fetchConversations,
     fetchFinalDocument,
@@ -195,5 +228,6 @@ export const useDocumentStore = defineStore('document', () => {
     reviseDocumentWithAI,
     saveDocumentChanges,
     fetchAndSetHistoryData,
+    fetchRevisionHistory
   };
 });

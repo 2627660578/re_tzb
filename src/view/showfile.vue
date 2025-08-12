@@ -49,32 +49,45 @@
                 />
 
                 <!-- AI Revision Panel -->
-                <Revise @submit="submitRevisionRequest" :is-loading="isRevising" />
+               <Revise 
+                  @submit="submitRevisionRequest" 
+                  :is-loading="isRevising"
+                  @showHistory="handleShowHistory" 
+                />
               </div>
             </aside>
           </div>
         </div>
       </template>
     </main>
+
+    <RevisionHistoryModal
+      :is-open="isHistoryModalOpen"
+      :history="documentStore.revisionHistory"
+      :is-loading="documentStore.isHistoryLoading"
+      :error="documentStore.error"
+      @close="isHistoryModalOpen = false"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted,watch,computed} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-// 导入新创建的API函数
 import { getFinalDocument, editDocument, updateDocument } from '../api/conversations'
-import { useDocumentStore } from '../store/document' // 确保导入的是新 store
+import { useDocumentStore } from '../store/document' 
 import Editor from '../components/showfile/Editor.vue'
 import Actions from '../components/showfile/Actions.vue'
 import Revise from '../components/showfile/Revise.vue'
+import RevisionHistoryModal from '../components/showfile/RevisionHistoryModal.vue'
+
 
 import { marked } from 'marked'
 import html2pdf from 'html2pdf.js'
 
 import { saveAs } from 'file-saver'
 
-
+const isHistoryModalOpen = ref(false); 
 const route = useRoute();
 const router = useRouter();
 const documentStore = useDocumentStore();
@@ -104,6 +117,16 @@ const downloadOptions = ref([
   { format: 'PDF', label: '下载为 (PDF)' },
   { format: 'DOCX', label: '下载为 (DOCX)' }
 ]);
+
+// 处理显示历史记录的事件
+const handleShowHistory = async () => {
+  isHistoryModalOpen.value = true;
+  const docId = route.params.id;
+  if (docId) {
+    // 调用 store action 获取数据
+    await documentStore.fetchRevisionHistory(docId);
+  }
+};
 
 // --- 计算属性，从 store 获取数据 ---
 const documentTitle = computed(() => documentStore.currentDocument?.title || 'Document');

@@ -196,34 +196,7 @@ const viewDocument = (doc) => {
   router.push(`/showfile/${doc.conversation_id}`)
 }
 
-// // 打开模态框并加载内容
-// const openModal = async (conversationId) => {
-//   isModalOpen.value = true
-//   modalContentLoading.value = true
-//   modalError.value = null
-//   selectedDocument.value = null
 
-//   try {
-//     const details = await getConversationDetails(conversationId)
-//     // 从历史消息中找到最终文档
-//     const finalDocMessage = details.history.find(msg => msg.content_type === 'final_document');
-    
-//     selectedDocument.value = {
-//       title: details.title,
-//       content: finalDocMessage ? finalDocMessage.content : '<p>No final document content available.</p>'
-//     }
-//   } catch (e) {
-//     modalError.value = e.message
-//   } finally {  
-//     modalContentLoading.value = false
-//   }
-// }
-
-// // 关闭模态框
-// const closeModal = () => {
-//   isModalOpen.value = false
-//   selectedDocument.value = null
-// }
 </script>
 
 <style scoped>

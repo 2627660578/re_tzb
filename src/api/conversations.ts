@@ -138,7 +138,12 @@ export async function getConversationDetails(conversationId: string, token: stri
     throw new Error(`Failed to fetch conversation details: ${errorData.message || response.statusText}`);
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log('[API 层] 从服务器收到的原始数据:', result);
+  console.log('[API 层] 即将返回给 Store 的 data 部分:', result.data);
+
+
+  return result.data;
 }
 
 /**
