@@ -1,0 +1,18 @@
+networks:
+  document_agent_net:
+    external: true  # 重要：加入后端已创建的网络
+
+services:
+  frontend:
+    image: document-agent/frontend:latest
+    build:
+      context: .
+      dockerfile: dockerfile
+    container_name: document-frontend
+    ports:
+      - "8010:80"     # 外部 8010 -> 容器内 Nginx 的 80
+    networks:
+      - document_agent_net
+    environment:
+      - TZ=Asia/Shanghai
+    restart: always

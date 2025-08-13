@@ -208,7 +208,7 @@ const removeFile = (tempId: string) => {
 
 // 文件上传逻辑 (使用 XMLHttpRequest)
 const uploadFile = (file: File) => {
-  const url = 'http://47.98.215.181:8010/llmcenter/v1/files/upload';
+  const url = '/llmcenter/v1/files/upload';
   const formData = new FormData();
   formData.append('file', file);
 
@@ -308,7 +308,7 @@ const generateChecklist = async () => {
   };
 
   try {
-    const response = await fetch('http://47.98.215.181:8010/llmcenter/v1/chat/completions', {
+    const response = await fetch('/llmcenter/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authStore.token}` },
       body: JSON.stringify(payload)
