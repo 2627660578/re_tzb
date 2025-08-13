@@ -292,9 +292,6 @@ const generateChecklist = async () => {
   }
   showModalMessage('正在生成清单...', '', false);
 
-  localStorage.removeItem('docuCraftChecklist');
-  localStorage.removeItem('docuCraftConversationId');
-
   const payload = {
     conversation_id: "",
     documenttype: formData.documentType,
@@ -343,11 +340,11 @@ const generateChecklist = async () => {
           try {
             const data = JSON.parse(dataJson);
             if (data.conversation_id) {
-              localStorage.setItem('docuCraftConversationId', data.conversation_id);
+               documentStore.currentConversationId = data.conversation_id; // 修改Store
             }
             if (eventType === 'interrupt' && data.content_type === 'document_outline' && data.content) {
-              localStorage.setItem('docuCraftChecklist', data.content);
-              if (localStorage.getItem('docuCraftConversationId')) {
+              documentStore.checklistContent = data.content; // 修改Store
+              if (documentStore.currentConversationId) {
                 router.push('/document/checklist');
                 interruptHandled = true;
                 reader.cancel();

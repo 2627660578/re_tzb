@@ -17,16 +17,13 @@
 
           <!-- 动态表单容器 -->
           <div v-if="sections.length > 0" class="space-y-6">
-            <!-- 使用 v-for 渲染每个可编辑的卡片 -->
             <div 
               v-for="(section, index) in sections" 
               :key="index" 
               class="bg-white border border-[var(--border-color)] rounded-xl shadow-sm transition-all hover:shadow-md"
             >
               <div class="title-toolbar-wrapper">
-                <!-- 标题输入框，使用 v-model 绑定 -->
                 <input type="text" v-model="section.title" class="dynamic-title-input" />
-                <!-- 格式化工具栏 -->
                 <div class="formatting-toolbar">
                   <button 
                     title="加粗 (Ctrl+B)"
@@ -36,12 +33,12 @@
                 </div>
               </div>
               <div class="p-4">
-                <!-- 内容编辑器 -->
+                <!-- 核心改动：移除 @input 处理器，添加 ref -->
                 <div
                   contenteditable="true"
                   class="dynamic-content-editor"
                   v-html="section.contentHtml"
-                  @input="updateSectionContent($event, index)"
+                  :ref="el => setEditorRef(el, index)"
                   @focus="activeToolbar = index"
                   @keyup="updateToolbarState($event, index)"
                   @mouseup="updateToolbarState($event, index)"
@@ -66,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted,onBeforeUpdate } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDocumentStore } from '../store/document'; // 导入 document store
 
@@ -86,10 +83,21 @@ const router = useRouter();
 const documentStore = useDocumentStore(); // 使用 store
 const sections = ref<Section[]>([]);
 const activeToolbar = ref<number | null>(null);
+const editorRefs = ref<HTMLDivElement[]>([]);
 // --- 方法 ---
 
+const setEditorRef = (el: any, index: number) => {
+  if (el) {
+    editorRefs.value[index] = el as HTMLDivElement;
+  }
+};
+
+onBeforeUpdate(() => {
+  editorRefs.value = [];
+});
+
 /**
- * 解析从 localStorage 获取的文本数据
+ * 解析zz获取的文本数据
  */
 const parseChecklistData = (data: string) => {
   const lines = data.trim().split('\n');
@@ -131,15 +139,6 @@ const formatLineToHtml = (line: string): string => {
   return `<div>${line}</div>`;
 };
 
-/**
- * 更新编辑器内容到响应式数据中
- */
-const updateSectionContent = (event: Event, index: number) => {
-  const editor = event.target as HTMLDivElement;
-  if (sections.value[index]) {
-    sections.value[index].contentHtml = editor.innerHTML;
-  }
-};
 
 /**
  * 执行加粗命令
@@ -166,57 +165,58 @@ const updateToolbarState = (event: Event, index: number) => {
 };
 
 
-/**
- * 提交内容并跳转到下一页
- */
 const submitAndContinue = async () => {
   if (documentStore.isGenerating) return;
 
-  // ... (代码用于从编辑器收集 contentParts 和 finalContent) ...
   let contentParts: string[] = [];
-  sections.value.forEach(section => {
-    contentParts.push(`### ${section.title.trim()}`);
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = section.contentHtml;
-    const lineDivs = tempDiv.querySelectorAll('div');
-    lineDivs.forEach(lineDiv => {
-      const plainText = lineDiv.textContent?.trim();
-      if (plainText) {
-        contentParts.push(`- ${plainText}`);
-      }
-    });
+  
+  // **核心改动**：从 sections 和 editorRefs 中收集数据
+  sections.value.forEach((section, index) => {
+    const editor = editorRefs.value[index];
+    if (editor) {
+      contentParts.push(`### ${section.title.trim()}`);
+      
+      // 使用临时的 div 来解析 HTML 内容，这是一种安全可靠的方式
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = editor.innerHTML; // 从编辑器DOM引用直接读取内容
+      
+      const lineDivs = tempDiv.querySelectorAll('div');
+      lineDivs.forEach(lineDiv => {
+        const plainText = lineDiv.textContent?.trim();
+        if (plainText) {
+          contentParts.push(`- ${plainText}`);
+        }
+      });
+    }
   });
+  
   const finalContent = contentParts.join('\n');
   
-  const conversationId = localStorage.getItem('docuCraftConversationId');
+  const conversationId = documentStore.currentConversationId; // 从 store 获取 ID
   if (!conversationId) {
-    alert("错误：无法找到会话ID，无法继续。");
+    alert("错误：无法在Store中找到会话ID，无法继续。");
     return;
   }
 
   try {
-    // 调用 store action 来开始流式生成
     await documentStore.generateDocumentFromChecklist({
       conversation_id: conversationId,
       content: finalContent,
     });
-    
-    // 立即跳转到 showfile 页面，无需等待生成完成
     router.push(`/showfile/${conversationId}`);
-
   } catch (err: any) {
-    // 如果启动过程失败，显示错误
     alert(`启动文档生成失败: ${err.message}`);
   }
 };
 
 // --- 生命周期钩子 ---
 onMounted(() => {
-  const checklistData = localStorage.getItem('docuCraftChecklist');
+  const checklistData = documentStore.checklistContent;
   if (checklistData) {
     parseChecklistData(checklistData);
   } else {
-    console.error('未找到清单数据，请确保已正确保存。');
+    console.error('未在Store中找到清单数据，请确保已正确保存。');
+    // 可以在这里添加一个备用内容或导航回上一页的逻辑
   }
 });
 </script>

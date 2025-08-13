@@ -5,6 +5,8 @@ import * as conversationsApi from '../api/conversations';
 
 export const useDocumentStore = defineStore('document', () => {
   // --- State ---
+  const checklistContent = ref<string | null>(null); // 新增：用于存储清单内容
+  const currentConversationId = ref<string | null>(null); // 新增：存储当前会话ID
   const conversations = ref<conversationsApi.ConversationSummary[]>([]);
   const currentDocument = ref<conversationsApi.FinalDocument | null>(null);
   const isLoading = ref(false);
@@ -220,6 +222,8 @@ export const useDocumentStore = defineStore('document', () => {
     historyData,
     revisionHistory,
     isHistoryLoading,
+    checklistContent,
+    currentConversationId,
     // Actions
     fetchConversations,
     fetchFinalDocument,
