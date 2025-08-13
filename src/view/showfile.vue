@@ -3,15 +3,8 @@
     <!-- Main Content -->
     <main class="main-content">
       <!-- 优先显示生成中的状态 -->
-      <div v-if="documentStore.isGenerating" class="status-message">
-        <p>正在为您生成文档，请稍候...</p>
-        <!-- 可以加一个加载动画 -->
-      </div>
-      <!-- 加载与错误状态 -->
-      <div v-if="isLoading" class="status-message">
-        <p>Loading document...</p>
-      </div>
-      <div v-else-if="error" class="status-message error-message">
+
+      <div v-if="error" class="status-message error-message">
         <p>Failed to load document:</p>
         <p>{{ error }}</p>
       </div>
@@ -29,7 +22,13 @@
           <!-- Document Section - 传递动态props给Editor组件 -->
         <div class="editor-section">
           <!-- 使用 v-model 并传递保存状态 -->
-          <Editor 
+          <div v-if="documentStore.isGenerating" class="status-message">
+            <p>正在为您生成文档，请稍候...</p>
+          </div>
+          <div v-else-if="isLoading" class="status-message">
+            <p>文章修改中...请稍后</p>
+          </div>
+          <Editor v-else
             :document-title="documentTitle" 
             v-model:document-content="documentContent"
             :document-updated-at="documentUpdatedAt"

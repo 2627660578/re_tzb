@@ -3,14 +3,16 @@
     <div class="document-container">
       <div class="document-padding">
 
-        <p :class="['save-status', `save-status--${saveStatus}`]">
-              {{ statusIndicator.text }}
-        </p>
-        
         <!-- Tiptap 编辑器容器 -->
         <div v-if="editor">
           <editor-content :editor="editor" />
         </div>
+        <br>
+        <p :class="['save-status', `save-status--${saveStatus}`]">
+          <strong>保存状态：</strong>
+          {{ statusIndicator.text }}
+        </p>
+
       </div>
     </div>
   </div>

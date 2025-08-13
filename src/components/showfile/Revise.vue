@@ -49,7 +49,7 @@
 import { ref } from 'vue'
 
 // 新增：接收isLoading prop
-defineProps({
+const props = defineProps({
   isLoading: {
     type: Boolean,
     default: false
@@ -63,6 +63,7 @@ const localRevisionRequest = ref('')
 const emit = defineEmits(['submit', 'showHistory'])
 
 const handleSubmitRevision = () => {
+  // 现在可以正确地通过 props.isLoading 访问 prop
   if (localRevisionRequest.value.trim() && !props.isLoading) {
     emit('submit', localRevisionRequest.value)
     localRevisionRequest.value = ''
