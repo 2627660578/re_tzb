@@ -80,6 +80,8 @@ const router = createRouter({
 
 // 全局导航守卫
 router.beforeEach((to, from, next) => {
+    void from;
+
     // 在守卫内部获取 auth store
     const authStore = useAuthStore();
 
