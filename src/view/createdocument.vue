@@ -166,17 +166,22 @@ onMounted(() => {
     formData.information = data.information;
 
     // 填充文件列表
-    uploadedFiles.value = data.references.map(ref => ({
-      tempId: `hist-${ref.file_id}`,
-      name: ref.filename,
-      progress: 100,
-      status: 'success',
-      statusText: '来自历史记录',
-      backendId: ref.file_id, // 注意：这里可能需要根据后端逻辑调整
-      url: ref.file_id, // 假设 file_id 就是 url 的一部分
-    }));
+    if (Array.isArray(data.references)) {
+      uploadedFiles.value = data.references.map(ref => ({
+        tempId: `hist-${ref.file_id}`,
+        name: ref.filename,
+        progress: 100,
+        status: 'success',
+        statusText: '来自历史记录',
+        backendId: ref.file_id,
+        url: ref.file_id,
+      }));
+    } else {
+      // 如果 references 是 null 或其他非数组类型，则将文件列表设置为空
+      uploadedFiles.value = [];
+    }
 
-    // **关键**：使用后立即清空 store 中的数据，防止下次进入时污染表单
+    //使用后立即清空 store 中的数据，防止下次进入时污染表单
     documentStore.historyData = null;
   }
 });
