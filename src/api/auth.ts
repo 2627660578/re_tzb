@@ -1,5 +1,5 @@
 // 定义API的基础URL
-const API_BASE_URL = 'http://47.98.215.181:8000/usercenter/v1';
+const API_BASE_URL = 'http://47.98.215.181:8010/usercenter/v1';
 
 // --- 类型定义 ---
 // 登录/注册的凭证类型

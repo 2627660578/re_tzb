@@ -18,16 +18,18 @@
           </router-link>
         </div>
         
-        <!-- 导航菜单 -->
         <nav class="hidden md:flex items-center gap-6">
-          <router-link 
+          <!-- 核心改动：将 router-link 替换为 a 标签，并添加点击事件 -->
+          <a
             v-for="navItem in navigation" 
             :key="navItem.name"
-            :to="navItem.path"
+            href="#"
+            @click.prevent="handleNavClick(navItem.path)"
             class="text-sm font-medium text-gray-600 hover:text-[var(--primary-color)] transition-colors"
+            :class="{ 'active-nav-link': router.currentRoute.value.path === navItem.path }"
           >
             {{ navItem.name }}
-          </router-link>
+          </a>
         </nav>
 
         <!-- 用户区域 -->
@@ -81,6 +83,16 @@ const navigation = ref([
 const isUserMenuOpen = ref(false)
 const userMenuContainer = ref<HTMLElement | null>(null) // 创建模板引用
 
+const handleNavClick = (path: string) => {
+  if (authStore.isAuthenticated) {
+    // 如果已登录，正常跳转
+    router.push(path)
+  } else {
+    // 如果未登录，弹出提示
+    alert('请先登录后再进行操作！')
+  }
+}
+
 
 // 计算用户头像，如果用户没有设置头像，则使用一个默认的SVG占位符
 const userAvatar = computed(() => {
@@ -110,8 +122,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 活跃链接样式 */
-.router-link-active {
+.active-nav-link {
   color: var(--primary-color);
   font-weight: 600;
 }
