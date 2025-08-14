@@ -75,6 +75,7 @@ import { ref, onMounted,watch,computed} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getFinalDocument, editDocument, updateDocument } from '../api/conversations'
 import { useDocumentStore } from '../store/document' 
+import { useAuthStore } from '../store/auth'
 import Editor from '../components/showfile/Editor.vue'
 import Actions from '../components/showfile/Actions.vue'
 import Revise from '../components/showfile/Revise.vue'
@@ -90,7 +91,7 @@ const isHistoryModalOpen = ref(false);
 const route = useRoute();
 const router = useRouter();
 const documentStore = useDocumentStore();
-
+const authStore = useAuthStore(); 
 // --- 响应式数据 ---
 
 const documentContent = computed({
@@ -160,26 +161,25 @@ watch(
 );
 
 // --- 方法 ---
-
 async function saveChanges(contentToSave) {
   if (saveStatus.value === 'saving') return;
 
   saveStatus.value = 'saving';
   try {
+    // 构建 payload
     const payload = {
       conversation_id: route.params.id,
       message_id: documentMessageId.value,
-      prompt: contentToSave,
+      prompt: contentToSave, // prompt 就是最新的文档内容
     };
 
-    const updatedDocument = await updateDocument(payload);
-
-    // 关键：用后端返回的新ID和时间更新本地状态
-    documentMessageId.value = updatedDocument.id;
-    documentUpdatedAt.value = updatedDocument.created_at;
+    // --- 核心修复：调用 store action 来处理保存逻辑 ---
+    await documentStore.saveDocumentChanges(payload);
+    
     saveStatus.value = 'saved';
 
   } catch (e) {
+    // store action 抛出错误时，在这里捕获并更新UI
     console.error("Save failed:", e);
     saveStatus.value = 'error';
   }

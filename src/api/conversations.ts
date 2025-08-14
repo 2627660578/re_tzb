@@ -46,6 +46,10 @@ export interface EditRequest {
   use_knowledge_base: boolean;
   knowledge_base_id?: string;
 }
+// 为 update 接口定义响应类型
+export interface UpdateResponse {
+  success: boolean;
+}
 // 修订后的响应也遵循FinalDocument的格式
 export type EditResponse = FinalDocument;
 
@@ -255,9 +259,9 @@ export async function editDocument(
  * 保存用户对文档的手动修改
  * @param {UpdateRequest} payload - 发送给API的数据
  * @param {string} token - 用户的认证Token
- * @returns {Promise<FinalDocument>} - 返回更新后的文档信息
+ * @returns {Promise<UpdateResponse>} - 返回操作成功与否
  */
-export async function updateDocument(payload: UpdateRequest, token: string): Promise<FinalDocument> {
+export async function updateDocument(payload: UpdateRequest, token: string): Promise<UpdateResponse> {
   const response = await fetch(`${API_BASE_URL}/chat/update`, {
     method: 'POST',
     headers: {
@@ -274,6 +278,7 @@ export async function updateDocument(payload: UpdateRequest, token: string): Pro
 
   return response.json();
 }
+
 
 
 /**

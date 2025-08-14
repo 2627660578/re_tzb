@@ -55,17 +55,23 @@ export const useDocumentStore = defineStore('document', () => {
   const fetchFinalDocument = async (conversationId: string) => {
     isLoading.value = true;
     error.value = null;
-    currentDocument.value = null;
     try {
       const token = _getAuthToken();
+      if (!token) throw new Error("Authentication token not found.");
+
       const response = await conversationsApi.getFinalDocument(conversationId, token);
+
       if (response.documents && response.documents.length > 0) {
-        // 假设我们总是取最新的文档
-        currentDocument.value = response.documents[response.documents.length - 1];
+        // --- 核心修复：将整个文档对象赋值给 currentDocument ---
+        // 这样可以确保 id, content, created_at, title 都被正确保存
+        currentDocument.value = response.documents[0];
+      } else {
+        error.value = 'No document content found for this conversation.';
+        currentDocument.value = null;
       }
     } catch (err: any) {
       error.value = err.message;
-      console.error(`Failed to fetch document for conversation ${conversationId}:`, err);
+      console.error('Failed to fetch final document:', err);
     } finally {
       isLoading.value = false;
     }
@@ -86,31 +92,57 @@ export const useDocumentStore = defineStore('document', () => {
       const token = _getAuthToken();
       const fullPayload = { ...payload, use_knowledge_base: false };
       const updatedDoc = await conversationsApi.editDocument(fullPayload, token, onChunkReceived);
-      currentDocument.value = updatedDoc; // 更新当前文档状态
+
+      // --- 核心修复：不要完全替换对象，而是更新字段 ---
+      if (currentDocument.value) {
+        // 确保只更新存在的字段，并保留如 title 等不变的字段
+        currentDocument.value.id = updatedDoc.id;
+        currentDocument.value.content = updatedDoc.content;
+        currentDocument.value.created_at = updatedDoc.created_at;
+      } else {
+        // 如果由于某种原因 currentDocument 不存在，则进行回退
+        currentDocument.value = updatedDoc;
+      }
+
     } catch (err: any) {
       error.value = err.message;
       console.error('Failed to revise document:', err);
+      // 重新抛出错误，让调用方可以处理
+      throw err;
     } finally {
       isLoading.value = false;
     }
   };
 
-  /**
-   * 手动保存文档修改
-   * @param {conversationsApi.UpdateRequest} payload - 更新请求数据
-   */
+   /**
+    * 自动保存文档修改
+    * @param { conversationsApi.UpdateRequest } payload - 更新请求数据
+    */
   const saveDocumentChanges = async (payload: conversationsApi.UpdateRequest) => {
-    isLoading.value = true;
-    error.value = null;
+    // 注意：这里不再设置全局 isLoading，因为这是一个后台的、无感知的保存
+    // error.value = null;
     try {
       const token = _getAuthToken();
-      const updatedDoc = await conversationsApi.updateDocument(payload, token);
-      currentDocument.value = updatedDoc; // 更新当前文档状态
+      // 调用更新后的 API 函数
+      const response = await conversationsApi.updateDocument(payload, token);
+
+      // 检查后端返回的 success 字段
+      if (response.success) {
+        // 如果保存成功，只更新 Pinia store 中的 content 内容，
+        // 保持 id 和 created_at 不变。
+        if (currentDocument.value) {
+          currentDocument.value.content = payload.prompt;
+        }
+      } else {
+        // 如果后端明确返回 success: false
+        throw new Error("Failed to save document on the server.");
+      }
     } catch (err: any) {
+      // 保存失败时，需要有机制通知用户
       error.value = err.message;
       console.error('Failed to save document changes:', err);
-    } finally {
-      isLoading.value = false;
+      // 重新抛出错误，让调用方可以处理UI（例如显示“保存失败”）
+      throw err;
     }
   };
 
