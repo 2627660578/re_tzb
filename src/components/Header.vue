@@ -2,8 +2,8 @@
 <template>
   <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-[var(--border-color)]">
     <div class="container mx-auto px-6">
-      <div class="flex h-16 items-center justify-between">
-        <!-- Logo区域 -->
+      <div class="relative flex h-16 items-center justify-between">
+        <!-- Logo区域 (保持在左侧) -->
         <div class="flex items-center gap-4">
           <router-link to="/" class="flex items-center gap-4">
             <svg 
@@ -18,8 +18,7 @@
           </router-link>
         </div>
         
-        <nav class="hidden md:flex items-center gap-6">
-          <!-- 核心改动：将 router-link 替换为 a 标签，并添加点击事件 -->
+        <nav class="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-6">
           <a
             v-for="navItem in navigation" 
             :key="navItem.name"
