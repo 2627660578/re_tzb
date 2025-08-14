@@ -36,7 +36,13 @@
               <div>
                 <label class="block text-sm font-medium text-[var(--text-primary)] mb-1.5" for="requests">生成要求</label>
                 <!-- 使用 v-model 绑定数据 -->
-                <textarea v-model="formData.requests" id="requests" class="block w-full rounded-md border-[var(--input-border-color)] shadow-sm focus:border-[var(--input-focus-border-color)] focus:ring focus:ring-[var(--input-focus-border-color)] focus:ring-opacity-50 transition p-3 placeholder:text-gray-400 text-base" placeholder="例如：语气严肃正式，突出会议的重要性..." rows="4"></textarea>
+                <textarea 
+                  v-model="formData.requests" 
+                  id="requests" 
+                  class="block w-full rounded-md border-[var(--input-border-color)] shadow-sm focus:border-[var(--input-focus-border-color)] focus:ring focus:ring-[var(--input-focus-border-color)] focus:ring-opacity-50 transition p-3 placeholder:text-gray-400 text-base" 
+                  :placeholder="requestsPlaceholder" 
+                  rows="4"
+                ></textarea>
               </div>
               <div id="drop-zone-wrapper">
                 <label class="block text-sm font-medium text-[var(--text-primary)] mb-1.5" for="information">现有信息</label>
@@ -113,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'; // 导入 onMounted
+import { ref, reactive, onMounted,computed} from 'vue'; // 导入 onMounted
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../store/auth';
 import { useDocumentStore } from '../store/document'; // 导入 document store
@@ -143,8 +149,32 @@ const formData = reactive({
   information: '',
 });
 
+const placeholderMap: { [key: string]: string } = {
+  '通知': '例如：明确会议时间、地点、议程，要求准时参加，语气正式。',
+  '通告': '例如：面向社会或全体人员，告知重要事项，内容应公开透明。',
+  '通报': '例如：表彰先进或批评错误，事实清楚，评价恰当。',
+  '报告': '例如：向上级汇报工作、反映情况，应客观陈述，数据详实。',
+  '请示': '例如：说明请求事项的理由和具体请求，语气谦恭，等待上级批复。',
+  '批复': '例如：针对下级的请示做出明确答复，同意或不同意，并说明理由。',
+  '决议': '例如：记录会议通过的各项决议，明确执行部门和完成时限，具有权威性和约束力。',
+  '决定': '例如：对重要事项或行动做出安排，明确指导思想、主要任务和具体措施。',
+  '公告': '例如：对外宣布重要事项或法定事项，内容需严谨、准确，具有法律效力。',
+  '意见': '例如：对重要问题提出见解和处理办法，供下级机关在执行时遵循或参考。',
+  '函': '例如：用于不相隶属部门之间商洽工作、询问和答复问题，语气平和。',
+  '会议纪要': '例如：记录会议核心议题、发言要点、形成的决议，确保内容准确无误。',
+  '命令（令）': '例如：依法发布，要求下级机关或有关人员执行特定任务或遵守特定规定，语气庄重、不容置疑。',
+  '议案': '例如：按法定程序提请会议审议，内容包括案由、方案和可行性说明。'
+};
+
+const requestsPlaceholder = computed(() => {
+  const defaultPlaceholder = '例如：语气严肃正式，突出会议的重要性...';
+  // 如果 formData.documentType 在我们的映射表中有对应的值，就返回它，否则返回默认值
+  return placeholderMap[formData.documentType] || defaultPlaceholder;
+});
+
 // 文件列表
 const uploadedFiles = ref<UploadedFile[]>([]);
+
 
 // 模态框状态
 const modal = reactive({

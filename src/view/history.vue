@@ -11,10 +11,10 @@
 
           <!-- 加载与错误状态 (从 Store 获取) -->
           <div v-if="documentStore.isLoading" class="text-center py-10">
-            <p class="text-gray-500">Loading documents...</p>
+            <p class="text-gray-500">加载文档中...</p>
           </div>
           <div v-else-if="documentStore.error" class="text-center py-10 bg-red-50 border border-red-200 rounded-lg">
-            <p class="text-red-600 font-medium">Failed to load documents:</p>
+            <p class="text-red-600 font-medium">加载失败</p>
             <p class="text-red-500 mt-1">{{ documentStore.error }}</p>
           </div>
 
@@ -30,7 +30,7 @@
                 <input 
                   v-model="searchQuery"
                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                  placeholder="Search documents by title..." 
+                  placeholder="输入标题查找..." 
                   type="search"
                 />
               </div>
@@ -50,7 +50,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 bg-white">
                   <tr v-if="filteredDocuments.length === 0">
-                    <td colspan="3" class="text-center py-10 text-gray-500">No documents found.</td>
+                    <td colspan="3" class="text-center py-10 text-gray-500">暂无文档</td>
                   </tr>
                   <tr 
                     v-for="doc in filteredDocuments" 
@@ -110,7 +110,7 @@
         </button>
         
         <div class="flex-grow p-6 sm:p-8 overflow-y-auto">
-          <div v-if="modalContentLoading" class="text-center py-10">Loading content...</div>
+          <div v-if="modalContentLoading" class="text-center py-10">加载中...</div>
           <div v-else-if="modalError" class="text-red-500 text-center py-10">{{ modalError }}</div>
           <div v-else class="prose max-w-none">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">{{ selectedDocument?.title }}</h2>
