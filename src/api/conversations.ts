@@ -125,7 +125,7 @@ export async function getConversationsList(token: string): Promise<ConversationS
   }
 
   const result = await response.json();
-  return result.data.data;
+  return result.data?.data || [];
 }
 
 /**
