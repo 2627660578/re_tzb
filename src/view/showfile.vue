@@ -4,19 +4,24 @@
     <main class="main-content">
       <!-- 优先显示生成中的状态 -->
 
+      <div v-if="isRevising" class="revising-overlay">
+        <div class="revising-spinner"></div>
+        <p class="revising-text">AI 正在修改中，请稍候...</p>
+      </div>
+
       <div v-if="error" class="status-message error-message">
         <p>Failed to load document:</p>
         <p>{{ error }}</p>
       </div>
 
       <template v-else>
-        <div class="breadcrumb-section">
+        <!-- <div class="breadcrumb-section">
           <nav class="breadcrumb">
             <router-link class="breadcrumb-link" to="/documents">My Documents</router-link>
             <span>/</span>
             <span class="breadcrumb-current">{{ documentTitle }}</span>
           </nav>
-        </div>
+        </div> -->
 
         <div class="content-grid">
           <!-- Document Section - 传递动态props给Editor组件 -->
@@ -45,6 +50,7 @@
                   :downloadOptions="downloadOptions"
                   @download="downloadDocument"
                   @backToEditing="backToEditing"
+                  :is-downloading="isDownloading"
                 />
 
                 <!-- AI Revision Panel -->
@@ -71,9 +77,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted,watch,computed} from 'vue'
+import { ref, onMounted,watch,computed,onBeforeUnmount} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getFinalDocument, editDocument, updateDocument } from '../api/conversations'
+import { getFinalDocument, editDocument, updateDocument,downloadFile} from '../api/conversations'
 import { useDocumentStore } from '../store/document' 
 import { useAuthStore } from '../store/auth'
 import Editor from '../components/showfile/Editor.vue'
@@ -81,13 +87,14 @@ import Actions from '../components/showfile/Actions.vue'
 import Revise from '../components/showfile/Revise.vue'
 import RevisionHistoryModal from '../components/showfile/RevisionHistoryModal.vue'
 
-
-import { marked } from 'marked'
-import html2pdf from 'html2pdf.js'
-
 import { saveAs } from 'file-saver'
 
 const isHistoryModalOpen = ref(false); 
+const isDownloading = ref(false);//跟踪下载状态
+const saveStatus = ref('saved'); // 保存状态 (saved, saving, unsaved, error)
+let saveTimeout = null; // 用于防抖的计时器
+
+
 const route = useRoute();
 const router = useRouter();
 const documentStore = useDocumentStore();
@@ -96,10 +103,12 @@ const authStore = useAuthStore();
 
 const documentContent = computed({
   get() {
-    // 如果正在生成，显示流式内容；否则显示最终文档内容
-    return documentStore.isGenerating 
-      ? documentStore.streamingContent 
-      : (documentStore.currentDocument?.content || '');
+    // 1. 修改：当正在生成 或 正在修订时，都显示流式内容
+    if (documentStore.isGenerating || documentStore.isRevising) {
+      return documentStore.streamingContent;
+    }
+    // 否则显示当前文档的稳定内容
+    return documentStore.currentDocument?.content || '';
   },
   set(value) {
     // 当用户编辑时，直接更新 store 中的最终文档
@@ -109,9 +118,7 @@ const documentContent = computed({
   }
 });
 
-const isRevising = ref(false);
-const saveStatus = ref('saved'); // 保存状态 (saved, saving, unsaved, error)
-let saveTimeout = null; // 用于防抖的计时器
+
 
 const downloadOptions = ref([
   { format: 'PDF', label: '下载为 (PDF)' },
@@ -133,6 +140,7 @@ const documentTitle = computed(() => documentStore.currentDocument?.title || 'Do
 const documentMessageId = computed(() => documentStore.currentDocument?.id || '');
 const documentUpdatedAt = computed(() => documentStore.currentDocument?.created_at || '');
 const isLoading = computed(() => documentStore.isLoading);
+const isRevising = computed(() => documentStore.isRevising); // 2. 从 store 获取 isRevising 状态
 const error = computed(() => documentStore.error);
 
 // --- 生命周期钩子 ---
@@ -146,7 +154,12 @@ onMounted(() => {
   }
 });
 
-
+onBeforeUnmount(() => {
+  // 在组件销毁前，清除任何待处理的保存操作
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+  }
+});
 // --- 监听器 ---
 watch(
   () => documentStore.currentDocument?.content,
@@ -208,105 +221,74 @@ async function fetchDocument(id) {
   }
 }
 
-//处理AI修订请求的函数
 async function submitRevisionRequest(prompt) {
+  // 3. 使用计算属性 isRevising.value
   if (isRevising.value) return;
 
   if (!documentMessageId.value) {
     alert("Cannot revise document: The document ID is missing. Please try reloading the page.");
     return;
   }
-
-  isRevising.value = true;
   error.value = null;
-  // 注意：这里不再清空 documentContent，因为计算属性会处理流式显示
-  // documentContent.value = ''; 
 
   try {
     const payload = {
       conversation_id: route.params.id,
       message_id: documentMessageId.value,
       prompt: prompt,
-      // use_knowledge_base 和 knowledge_base_id 由 store 处理
     };
 
-    // 定义一个回调函数，用于在接收到数据块时更新UI
-    const handleChunk = (fullContent) => {
-      updateDocumentContent(fullContent);
-    };
-
-    await documentStore.reviseDocumentWithAI(payload, (chunk) => {
-        // 这个回调仍然可以用来做一些额外的事情，但主要更新由 store 完成
-        // 在这里我们不需要做什么特别的
-    });
+    await documentStore.reviseDocumentWithAI(payload);
 
     // 流结束后，store 会自动更新 currentDocument，我们只需标记状态
     saveStatus.value = 'saved'; // AI修订后也标记为已保存
 
   } catch (e) {
     console.error("Revision failed:", e);
-    // 错误信息现在也应该从 store 获取
     alert(`Revision failed: ${documentStore.error || e.message}`);
-  } finally {
-    isRevising.value = false;
-  }
+  } 
 }
 
 function updateDocumentContent(rawContent) {
   documentContent.value = rawContent;
 }
+
 const downloadDocument = async (format) => {
-    const markdownContent = documentContent.value;
-  if (!markdownContent) {
-    alert('Document is empty, cannot download.');
+  const markdownContent = documentContent.value;
+  if (!markdownContent || isDownloading.value) {
+    if (!markdownContent) alert('文档内容为空，无法下载。');
     return;
   }
 
-  // 将 Markdown 转换为 HTML
-  let htmlContent = marked.parse(markdownContent);
-  const title = documentTitle.value || 'document';
-
-  htmlContent = htmlContent.replace(/<li><p>/g, '<li>').replace(/<\/p><\/li>/g, '</li>');
-  switch (format) {
-    case 'PDF': {
-      // *** 核心修复：定义PDF所需的CSS样式 ***
-      const pdfStyles = `
-        <style>
-          ol { 
-            list-style-type: decimal; 
-            padding-left: 2em; /* 增加左边距，让数字和文本有间距 */
-          }
-        </style>
-      `;
-
-      // 创建一个临时的、带样式的容器来渲染HTML
-      const element = document.createElement('div');
-      // 将样式和HTML内容一起注入
-      element.innerHTML = pdfStyles + htmlContent;
-      // 添加一些内边距，让PDF内容不会紧贴边缘
-      element.style.padding = '20mm'; 
-      element.style.width = '210mm'; // A4 宽度
-
-      // --- 新增：在下载前将最终的HTML内容打印到控制台 ---
-      console.log("--- HTML content for PDF generation ---");
-      console.log(element.innerHTML);
-      console.log("---------------------------------------");
-
-      const opt = {
-        margin: 0,
-        filename: `${title}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().from(element).set(opt).save();
-      break;
+  isDownloading.value = true;
+  try {
+    const token = authStore.token;
+    if (!token) {
+      throw new Error("用户未登录，无法下载。");
     }
-    case 'DOCX': {
-      break;
+
+    const fileType = format.toLowerCase();
+    if (fileType !== 'pdf' && fileType !== 'docx') {
+      throw new Error(`不支持的下载格式: ${format}`);
     }
-    default:
-      console.warn(`Unsupported download format: ${format}`);
+
+    const payload = {
+      prompt: markdownContent,
+      type: fileType,
+    };
+
+    // 调用新的API函数
+    const blob = await downloadFile(payload, token);
+    
+    const title = documentTitle.value || 'document';
+    // 使用 file-saver 保存 Blob
+    saveAs(blob, `${title}.${fileType}`);
+
+  } catch (e) {
+    console.error("下载失败:", e);
+    alert(`下载失败: ${e.message}`);
+  } finally {
+    isDownloading.value = false;
   }
 }
 
@@ -395,8 +377,8 @@ const backToEditing = async () => {
 /* Content Grid - 左右并列布局 */
 .content-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr; /* 左侧占2份，右侧占1份 */
-  gap: 2rem;
+  grid-template-columns: 7fr 3fr; /* 左侧占3份，右侧占1份 */
+  gap: 1rem;
   width: 100%;
   min-height: 600px; /* 确保有足够的高度 */
 }
@@ -451,6 +433,41 @@ const backToEditing = async () => {
   
   .sidebar-sticky {
     position: static; /* 小屏幕时取消粘性定位 */
+  }
+}
+
+.revising-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* 1. 将背景色改为完全透明 */
+  background-color: transparent; 
+  /* 2. 移除模糊效果 */
+  /* backdrop-filter: blur(4px); */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 50; /* 保持在最上层以拦截点击 */
+  border-radius: 0.75rem;
+}
+
+
+/* 3. 移除覆盖层内的加载动画和文字样式，因为我们将把它们移到 Revise 组件中 */
+.revising-spinner {
+  display: none;
+}
+
+.revising-text {
+  display: none;
+}
+
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

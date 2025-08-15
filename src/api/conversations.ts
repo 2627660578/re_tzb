@@ -97,6 +97,12 @@ export interface HistoryDataResponse {
   conversation_id: string;
   items: HistoryDataItem[];
 }
+
+//为文件下载接口定义请求类型
+export interface DownloadRequest {
+  prompt: string;
+  type: 'pdf' | 'docx';
+}
 // --- API 请求函数 ---
 
 /**
@@ -368,4 +374,30 @@ export async function getHistoryData(conversationId: string, token: string): Pro
   }
 
   return response.json();
+}
+
+/**
+ * 新增：通过markdown格式公文下载相应文件
+ * @param payload - 包含markdown内容和文件类型的对象
+ * @param token - 用户的认证Token
+ * @returns {Promise<Blob>} - 返回文件内容的Blob对象
+ */
+export async function downloadFile(payload: DownloadRequest, token: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}/files/download`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    // 尝试解析JSON错误信息，如果失败则使用状态文本
+    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+    throw new Error(`Failed to download file: ${errorData.message || response.statusText}`);
+  }
+
+  // 返回文件的Blob数据
+  return response.blob();
 }

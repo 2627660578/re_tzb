@@ -41,10 +41,10 @@
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-800 sm:pl-6" scope="col">Document Title</th>
-                    <th class="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-800 sm:table-cell" scope="col">Last Updated</th>
+                    <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-800 sm:pl-6" scope="col">文档</th>
+                    <th class="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-800 sm:table-cell" scope="col">生成时间</th>
                     <th class="relative py-3.5 pl-3 pr-4 sm:pr-6" scope="col">
-                      <span class="sr-only">View</span>
+                      <span class="sr-only">查看文档</span>
                     </th>
                   </tr>
                 </thead>
@@ -182,7 +182,7 @@ const filteredDocuments = computed(() => {
 // 格式化日期
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('en-US', {
+  return new Date(dateString).toLocaleDateString('en-CN', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

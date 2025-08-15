@@ -1,16 +1,21 @@
 <template>
   <div class="ai-revision-panel">
-    <div class="ai-revision-header">
+    <!-- 1. 根据 isLoading 状态显示不同的头部 -->
+    <div v-if="!isLoading" class="ai-revision-header">
       <div class="flex items-center gap-3">
         <svg class="ai-icon" fill="currentColor" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
           <path d="M224,128a96,96,0,1,1-96-96A96,96,0,0,1,224,128Zm-40-28a12,12,0,1,0-12-12A12,12,0,0,0,184,100Zm-64,0a12,12,0,1,0-12-12A12,12,0,0,0,120,100Zm-28,40a16,16,0,0,0,0,32,16.5,16.5,0,0,0,8.2-2.39,47.88,47.88,0,0,1,63.6,0A16.5,16.5,0,0,0,172,172a16,16,0,0,0,0-32,12,12,0,0,0-11.23,8,24,24,0,0,0-32.34-3.48A23.65,23.65,0,0,0,119.2,148,12,12,0,0,0,92,140Z"></path>
         </svg>
         <h3 class="ai-revision-title">AI修改</h3>
       </div>
-      <!-- 新增：查看历史链接 -->
       <button @click="$emit('showHistory')" class="text-sm font-medium text-blue-600 hover:text-blue-800">
         查看历史
       </button>
+    </div>
+    <!-- 加载状态时显示的头部 -->
+    <div v-else class="ai-revision-header-loading">
+      <div class="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <h3 class="ai-revision-title">正在修改中...</h3>
     </div>
     
     <p class="ai-revision-description">
@@ -30,14 +35,13 @@
         class="submit-button"
         :disabled="isLoading || !localRevisionRequest.trim()"
       >
-        <!-- 根据加载状态显示不同内容 -->
+        <!-- 2. 按钮内的加载动画保持不变 -->
         <span v-if="!isLoading">
           <svg class="submit-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
             <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
           </svg>
         </span>
         <span v-else>
-          <!-- 可以添加一个加载动画 -->
           <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
         </span>
       </button>
@@ -63,7 +67,6 @@ const localRevisionRequest = ref('')
 const emit = defineEmits(['submit', 'showHistory'])
 
 const handleSubmitRevision = () => {
-  // 现在可以正确地通过 props.isLoading 访问 prop
   if (localRevisionRequest.value.trim() && !props.isLoading) {
     emit('submit', localRevisionRequest.value)
     localRevisionRequest.value = ''
@@ -87,6 +90,13 @@ const handleSubmitRevision = () => {
   display: flex;
   align-items: center;
   justify-content: space-between; /* 修改为 space-between */
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ai-revision-header-loading {
+  display: flex;
+  align-items: center;
   gap: 0.75rem;
   margin-bottom: 1rem;
 }

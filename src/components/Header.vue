@@ -14,21 +14,21 @@
             >
               <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20ZM8 12H16V14H8V12ZM8 16H16V18H8V16Z"></path>
             </svg>
-            <h1 class="text-xl font-bold text-gray-900">DocuGen</h1>
+            <h1 class="text-xl font-bold text-gray-900">智创文档</h1>
           </router-link>
         </div>
         
-        <nav class="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-6">
-          <a
+        <!-- 1. 添加 v-if 指令来控制整个 nav 元素的显示 -->
+        <nav v-if="authStore.isAuthenticated" class="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-6">
+          <router-link
             v-for="navItem in navigation" 
             :key="navItem.name"
-            href="#"
-            @click.prevent="handleNavClick(navItem.path)"
+            :to="navItem.path"
             class="text-sm font-medium text-gray-600 hover:text-[var(--primary-color)] transition-colors"
             :class="{ 'active-nav-link': router.currentRoute.value.path === navItem.path }"
           >
             {{ navItem.name }}
-          </a>
+          </router-link>
         </nav>
 
         <!-- 用户区域 -->
@@ -53,13 +53,7 @@
               </div>
             </transition>
           </div>
-          
-          <!-- 如果未登录，显示登录按钮 -->
-          <!-- <div v-else>
-            <router-link to="/login" class="px-4 py-2 text-sm font-semibold text-white bg-[var(--primary-color)] rounded-md hover:bg-opacity-90 transition-colors">
-              登录
-            </router-link>
-          </div> -->
+
         </div>
       </div>
     </div>
@@ -82,15 +76,15 @@ const navigation = ref([
 const isUserMenuOpen = ref(false)
 const userMenuContainer = ref<HTMLElement | null>(null) // 创建模板引用
 
-const handleNavClick = (path: string) => {
-  if (authStore.isAuthenticated) {
-    // 如果已登录，正常跳转
-    router.push(path)
-  } else {
-    // 如果未登录，弹出提示
-    alert('请先登录后再进行操作！')
-  }
-}
+// const handleNavClick = (path: string) => {
+//   if (authStore.isAuthenticated) {
+//     // 如果已登录，正常跳转
+//     router.push(path)
+//   } else {
+//     // 如果未登录，弹出提示
+//     alert('请先登录后再进行操作！')
+//   }
+// }
 
 
 // 计算用户头像，如果用户没有设置头像，则使用一个默认的SVG占位符

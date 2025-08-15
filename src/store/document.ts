@@ -10,6 +10,7 @@ export const useDocumentStore = defineStore('document', () => {
   const conversations = ref<conversationsApi.ConversationSummary[]>([]);
   const currentDocument = ref<conversationsApi.FinalDocument | null>(null);
   const isLoading = ref(false);
+  const isRevising = ref(false);
   const isGenerating = ref(false); 
   const streamingContent = ref(''); 
   const error = ref<string | null>(null);
@@ -77,40 +78,45 @@ export const useDocumentStore = defineStore('document', () => {
     }
   };
 
+  // ...existing code...
   /**
    * 使用AI修订文档
    * @param {Omit<conversationsApi.EditRequest, 'use_knowledge_base'>} payload - 修订请求数据
-   * @param {(chunk: string) => void} onChunkReceived - 流式数据回调
    */
   const reviseDocumentWithAI = async (
-    payload: Omit<conversationsApi.EditRequest, 'use_knowledge_base'>,
-    onChunkReceived: (chunk: string) => void
+    payload: Omit<conversationsApi.EditRequest, 'use_knowledge_base'>
   ) => {
-    isLoading.value = true;
+    isRevising.value = true; // 2. 开始修订，设置状态
     error.value = null;
+    streamingContent.value = currentDocument.value?.content || ''; // 3. 初始化流式内容为当前内容
+
     try {
       const token = _getAuthToken();
       const fullPayload = { ...payload, use_knowledge_base: false };
+
+      // 4. 定义流式回调，实时更新 streamingContent
+      const onChunkReceived = (chunk: string) => {
+        streamingContent.value = chunk;
+      };
+
+      // 5. 调用API，传入回调。我们现在等待它完成，以获取最终的ID
       const updatedDoc = await conversationsApi.editDocument(fullPayload, token, onChunkReceived);
 
-      // --- 核心修复：不要完全替换对象，而是更新字段 ---
+      // 6. 流结束后，用最终结果更新 currentDocument
       if (currentDocument.value) {
-        // 确保只更新存在的字段，并保留如 title 等不变的字段
         currentDocument.value.id = updatedDoc.id;
         currentDocument.value.content = updatedDoc.content;
         currentDocument.value.created_at = updatedDoc.created_at;
       } else {
-        // 如果由于某种原因 currentDocument 不存在，则进行回退
         currentDocument.value = updatedDoc;
       }
 
     } catch (err: any) {
       error.value = err.message;
       console.error('Failed to revise document:', err);
-      // 重新抛出错误，让调用方可以处理
       throw err;
     } finally {
-      isLoading.value = false;
+      isRevising.value = false; // 7. 无论成功或失败，结束修订状态
     }
   };
 
@@ -248,8 +254,9 @@ export const useDocumentStore = defineStore('document', () => {
     conversations,
     currentDocument,
     isLoading,
+    isRevising,
     isGenerating,
-    streamingContent, // 导出新状态
+    streamingContent, 
     error,
     historyData,
     revisionHistory,

@@ -1,6 +1,6 @@
 <template>
   <div class="actions-panel">
-    <h3 class="panel-title">Actions</h3>
+    <h3 class="panel-title">操作</h3>
     <div class="actions-list">
       <!-- Download Dropdown -->
       <div class="dropdown-container">
