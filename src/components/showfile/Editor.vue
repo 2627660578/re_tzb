@@ -9,7 +9,7 @@
           
           <br>
           <!-- 核心改动：添加 v-if 指令 -->
-          <p v-if="!isGenerating" :class="['save-status', `save-status--${saveStatus}`]">
+          <p v-if="!isGenerating && documentId"  :class="['save-status', `save-status--${saveStatus}`]">
             <strong>保存状态：</strong>
             {{ statusIndicator.text }}
           </p>
@@ -47,7 +47,11 @@ const props = defineProps({
   isGenerating: {
     type: Boolean,
     default: false
-  }
+  },  
+  documentId: {
+    type: String,
+    default: ''
+  },
 });
 
 const emit = defineEmits(['update:documentContent']);
@@ -242,7 +246,7 @@ onBeforeUnmount(() => {
 }
 /* 新增：为编辑器内容区域定义样式 */
 .prose-mirror-editor {
-  min-height: 500px; /* 设置初始最小高度 */
+  min-height: 700px; /* 设置初始最小高度 */
   border-radius: 0.5rem;
   line-height: 1.625;
   transition: border-color 0.2s;

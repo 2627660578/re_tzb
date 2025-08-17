@@ -29,6 +29,7 @@ export interface ConversationDetail {
 // 为最终文档接口定义类型
 export interface FinalDocument {
   id: string;
+  title?: string; 
   content: string;
   created_at: string;
 }

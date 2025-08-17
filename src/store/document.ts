@@ -60,6 +60,7 @@ export const useDocumentStore = defineStore('document', () => {
   const fetchFinalDocument = async (conversationId: string) => {
     isLoading.value = true;
     error.value = null;
+    currentDocument.value = null; // 获取前先清空
     try {
       const token = _getAuthToken();
       if (!token) throw new Error("Authentication token not found.");
@@ -67,10 +68,19 @@ export const useDocumentStore = defineStore('document', () => {
       const response = await conversationsApi.getFinalDocument(conversationId, token);
 
       if (response.documents && response.documents.length > 0) {
-        // --- 核心修复：将整个文档对象赋值给 currentDocument ---
-        // 这样可以确保 id, content, created_at, title 都被正确保存
+        // 正常情况：获取到文档
         currentDocument.value = response.documents[0];
+      } else if (response.documents === null) {
+        // 特殊情况：文档为 null，表示生成中断或过期
+        // 我们不设置全局 error，而是创建一个包含提示信息的文档对象
+        currentDocument.value = {
+          id: '', // ID 为空
+          title: '加载失败', // 设置一个标题
+          content: '文件生成中断或过期', // **核心改动：将提示信息作为文档内容**
+          created_at: new Date().toISOString(),
+        };
       } else {
+        // 其他情况（例如 documents 是一个空数组）
         error.value = 'No document content found for this conversation.';
         currentDocument.value = null;
       }
@@ -81,6 +91,7 @@ export const useDocumentStore = defineStore('document', () => {
       isLoading.value = false;
     }
   };
+
 
   // ...existing code...
   /**

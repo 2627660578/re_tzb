@@ -32,6 +32,7 @@
             :document-updated-at="documentUpdatedAt"
             :save-status="saveStatus"
             :is-generating="documentStore.isGenerating"
+            :document-id="documentMessageId"
           />
         </div>
 
@@ -155,6 +156,10 @@ onBeforeUnmount(() => {
 watch(
   () => documentStore.currentDocument?.content,
   (newValue, oldValue) => {
+
+    if (!documentMessageId.value) {
+      return;
+    }
     if (isLoading.value || documentStore.isGenerating || newValue === oldValue) {
       return;
     }
