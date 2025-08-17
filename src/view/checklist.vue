@@ -140,11 +140,10 @@ const formatLineToHtml = (line: string): string => {
   if (colonIndex !== -1) {
     const label = line.substring(0, colonIndex);
     const value = line.substring(colonIndex + 1);
-    return `<div><strong>${label}：</strong>${value}</div>`;
+    return `<div><strong>${label}：</strong> &zwnj; ${value}</div>`;
   }
   return `<div>${line}</div>`;
 };
-
 
 /**
  * 执行加粗命令
