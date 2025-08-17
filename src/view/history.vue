@@ -182,7 +182,7 @@ const filteredDocuments = computed(() => {
 // 格式化日期
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleDateString('en-CN', {
+  return new Date(dateString).toLocaleDateString('CN', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

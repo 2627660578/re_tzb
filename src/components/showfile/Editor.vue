@@ -6,13 +6,14 @@
         <!-- Tiptap 编辑器容器 -->
         <div v-if="editor">
           <editor-content :editor="editor" />
+          
+          <br>
+          <!-- 核心改动：添加 v-if 指令 -->
+          <p v-if="!isGenerating" :class="['save-status', `save-status--${saveStatus}`]">
+            <strong>保存状态：</strong>
+            {{ statusIndicator.text }}
+          </p>
         </div>
-        <br>
-        <p :class="['save-status', `save-status--${saveStatus}`]">
-          <strong>保存状态：</strong>
-          {{ statusIndicator.text }}
-        </p>
-
       </div>
     </div>
   </div>
@@ -42,6 +43,10 @@ const props = defineProps({
   saveStatus: {
     type: String,
     default: 'saved' // 'saved', 'saving', 'unsaved', 'error'
+  },
+  isGenerating: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -66,6 +71,11 @@ const statusIndicator = computed(() => {
 const editor = useEditor({
   // 使用 EditorContent 组件来渲染
   content: props.documentContent,
+  editorProps: {
+    attributes: {
+      class: 'prose-mirror-editor', // 添加自定义类名
+    },
+  },
   extensions: [
     StarterKit.configure({
       // 根据需要配置StarterKit
@@ -113,47 +123,6 @@ onBeforeUnmount(() => {
   }
 });
 </script>
-
-<style>
-
-.ProseMirror {
-  outline: none;
-  line-height: 1.625;
-  color: #374151;
-}
-
-.ProseMirror > * + * {
-  margin-top: 0.75em;
-}
-
-.ProseMirror h1,
-.ProseMirror h2,
-.ProseMirror h3 {
-  line-height: 1.1;
-  font-weight: 700;
-}
-
-.ProseMirror h1 { font-size: 2em; }
-.ProseMirror h2 { font-size: 1.5em; }
-.ProseMirror h3 { font-size: 1.25em; }
-
-.ProseMirror ul,
-.ProseMirror ol {
-  padding: 0 1rem;
-}
-
-.ProseMirror strong {
-  font-weight: bold;
-}
-
-.ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  color: #adb5bd;
-  pointer-events: none;
-  height: 0;
-}
-</style>
 
 <style scoped>
 /* Document Section */
@@ -265,6 +234,28 @@ onBeforeUnmount(() => {
   box-shadow: 0 0 0 2px rgba(11, 128, 238, 0.2);
 }
 /* ... */
+
+.ProseMirror {
+  outline: none;
+  /* 移除这里的 line-height，统一在 .prose-mirror-editor 中管理 */
+  /* color: #374151; */
+}
+/* 新增：为编辑器内容区域定义样式 */
+.prose-mirror-editor {
+  min-height: 500px; /* 设置初始最小高度 */
+  border-radius: 0.5rem;
+  line-height: 1.625;
+  transition: border-color 0.2s;
+}
+
+.prose-mirror-editor:focus-within {
+  border-color: #0b80ee;
+  /* box-shadow: 0 0 0 2px rgba(11, 128, 238, 0.2); */
+}
+
+.ProseMirror > * + * {
+  margin-top: 0.75em;
+}
 
 .ProseMirror h1 { font-size: 2em; }
 .ProseMirror h2 { font-size: 1.5em; }

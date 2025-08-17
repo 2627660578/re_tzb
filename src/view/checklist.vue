@@ -1,4 +1,3 @@
-<!-- filepath: d:\0_挑战杯\网页\refronted3\my-project\src\view\ChecklistEditor.vue -->
 <template>
   <div class="relative flex min-h-screen flex-col bg-[var(--background-color)] text-gray-800">
     <!-- 页面头部 (可以提取为独立组件) -->
@@ -15,7 +14,7 @@
             <!-- ... 面包屑和标题 HTML ... -->
           </div>
 
-          <!-- 动态表单容器 -->
+          <!-- 动态表单容器  -->
           <div v-if="sections.length > 0" class="space-y-6">
             <div 
               v-for="(section, index) in sections" 
@@ -33,7 +32,6 @@
                 </div>
               </div>
               <div class="p-4">
-                <!-- 核心改动：移除 @input 处理器，添加 ref -->
                 <div
                   contenteditable="true"
                   class="dynamic-content-editor"
@@ -97,7 +95,7 @@ onBeforeUpdate(() => {
 });
 
 /**
- * 解析zz获取的文本数据
+ * 解析获取的文本数据
  */
 const parseChecklistData = (data: string) => {
   const lines = data.trim().split('\n');
@@ -152,8 +150,6 @@ const execBold = () => {
  */
 const updateToolbarState = (event: Event, index: number) => {
     activeToolbar.value = index;
-    // 注意: queryCommandState 已被废弃，但在简单场景下仍可用
-    // 现代富文本编辑器通常有自己的状态管理
     const button = (event.currentTarget as HTMLElement).closest('.bg-white')?.querySelector('.formatting-toolbar button');
     if (button) {
         if (document.queryCommandState('bold')) {

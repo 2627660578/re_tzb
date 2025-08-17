@@ -396,9 +396,11 @@ const generateChecklist = async () => {
       showModalMessage('生成失败', '未能从服务器获取有效的内容清单。', true);
     }
   } catch (error: any) {
+    // 如果 Store Action 内部的同步代码出错（例如 token 获取失败），会在这里捕获
     showModalMessage('请求失败', error.message, true);
   }
 };
+
 </script>
 
 <style scoped>

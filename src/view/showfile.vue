@@ -15,29 +15,23 @@
       </div>
 
       <template v-else>
-        <!-- <div class="breadcrumb-section">
-          <nav class="breadcrumb">
-            <router-link class="breadcrumb-link" to="/documents">My Documents</router-link>
-            <span>/</span>
-            <span class="breadcrumb-current">{{ documentTitle }}</span>
-          </nav>
-        </div> -->
 
         <div class="content-grid">
           <!-- Document Section - 传递动态props给Editor组件 -->
         <div class="editor-section">
           <!-- 使用 v-model 并传递保存状态 -->
-          <div v-if="documentStore.isGenerating" class="status-message">
+          <!-- <div v-if="documentStore.isGenerating" class="status-message">
             <p>正在为您生成文档，请稍候...</p>
-          </div>
-          <div v-else-if="isLoading" class="status-message">
-            <p>文章修改中...请稍后</p>
+          </div> -->
+          <div v-if="isLoading && !documentStore.isGenerating" class="status-message">
+            <p>正在加载中...</p>
           </div>
           <Editor v-else
             :document-title="documentTitle" 
             v-model:document-content="documentContent"
             :document-updated-at="documentUpdatedAt"
             :save-status="saveStatus"
+            :is-generating="documentStore.isGenerating"
           />
         </div>
 
@@ -117,9 +111,6 @@ const documentContent = computed({
     }
   }
 });
-
-
-
 const downloadOptions = ref([
   { format: 'PDF', label: '下载为 (PDF)' },
   { format: 'DOCX', label: '下载为 (DOCX)' }
@@ -204,7 +195,6 @@ async function fetchDocument(id) {
   try {
     const response = await getFinalDocument(id);
     if (response.documents && response.documents.length > 0) {
-      // *** 这是关键修改 ***
       // 同时获取文档内容和ID
       const currentDocument = response.documents[0];
       documentMessageId.value = currentDocument.id;
