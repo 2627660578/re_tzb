@@ -1,8 +1,6 @@
 <template>
   <div class="relative flex min-h-screen flex-col bg-[var(--background-color)] text-gray-800">
-    <!-- 页面头部 (可以提取为独立组件) -->
     <header class="sticky top-0 z-10 w-full border-b border-[var(--border-color)] bg-white/80 backdrop-blur-md">
-      <!-- ... 头部导航 HTML ... -->
     </header>
 
     <!-- 主内容区域 -->
@@ -14,8 +12,16 @@
             <!-- ... 面包屑和标题 HTML ... -->
           </div>
 
-          <!-- 动态表单容器  -->
-          <div v-if="sections.length > 0" class="space-y-6">
+          <!-- 新增：流式生成时的占位符 -->
+          <div v-if="documentStore.isChecklistGenerating" class="bg-white border border-[var(--border-color)] rounded-xl shadow-sm p-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">正在生成清单...</h3>
+            <div class="prose prose-sm max-w-none text-gray-600">
+              <pre class="bg-gray-50 p-4 rounded-md whitespace-pre-wrap break-words min-h-[200px]">{{ documentStore.streamingChecklistContent }}</pre>
+            </div>
+          </div>
+
+          <!-- 动态表单容器 (仅在流结束后且有内容时显示) -->
+          <div v-if="!documentStore.isChecklistGenerating && sections.length > 0" class="space-y-6">
             <div 
               v-for="(section, index) in sections" 
               :key="index" 
@@ -44,14 +50,14 @@
               </div>
             </div>
           </div>
-          <!-- 加载失败或无内容时的提示 -->
-          <div v-else class="bg-white border border-dashed border-yellow-400 rounded-xl shadow-sm p-6 text-center">
+          <!-- 加载失败或无内容时的提示 (仅在流结束后且无内容时显示) -->
+          <div v-if="!documentStore.isChecklistGenerating && sections.length === 0" class="bg-white border border-dashed border-yellow-400 rounded-xl shadow-sm p-6 text-center">
             <h3 class="text-lg font-medium text-yellow-800">未收到有效内容</h3>
             <p class="mt-1 text-sm text-yellow-700">未能解析出有效的内容清单，请返回上一页重试。</p>
           </div>
 
-          <!-- 操作按钮 -->
-          <div class="flex justify-end pt-4">
+          <!-- 操作按钮 (仅在流结束后且有内容时显示) -->
+          <div v-if="!documentStore.isChecklistGenerating && sections.length > 0" class="flex justify-end pt-4">
             <button @click="submitAndContinue" class="btn-primary" type="button">确认并继续</button>
           </div>
         </div>
@@ -61,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted,onBeforeUpdate } from 'vue';
+import { ref, onMounted,onBeforeUpdate,watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDocumentStore } from '../store/document'; // 导入 document store
 
@@ -78,7 +84,7 @@ interface ParsingSection {
 }
 // --- 响应式状态 ---
 const router = useRouter();
-const documentStore = useDocumentStore(); // 使用 store
+const documentStore = useDocumentStore();
 const sections = ref<Section[]>([]);
 const activeToolbar = ref<number | null>(null);
 const editorRefs = ref<HTMLDivElement[]>([]);
@@ -205,14 +211,23 @@ const submitAndContinue = async () => {
   }
 };
 
+// 监听 checklistContent 的变化，当流结束并赋值后，解析内容
+watch(() => documentStore.checklistContent, (newContent) => {
+  if (newContent) {
+    parseChecklistData(newContent);
+  }
+});
+
+
 // --- 生命周期钩子 ---
 onMounted(() => {
+  // 页面加载时，如果 checklistContent 已有内容（例如，从历史记录恢复），则直接解析
   const checklistData = documentStore.checklistContent;
   if (checklistData) {
     parseChecklistData(checklistData);
-  } else {
-    console.error('未在Store中找到清单数据，请确保已正确保存。');
-    // 可以在这里添加一个备用内容或导航回上一页的逻辑
+  } else if (!documentStore.isChecklistGenerating) {
+    // 如果没有正在进行中的流，也没有内容，则显示错误
+    console.error('未在Store中找到清单数据，也未在生成中。');
   }
 });
 </script>

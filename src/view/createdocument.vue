@@ -325,10 +325,11 @@ const generateChecklist = async () => {
     showModalMessage('错误', '请选择一个公文类型。', true);
     return;
   }
-  showModalMessage('正在生成清单...', '', false);
+  // 不再显示模态框，因为会立刻跳转
+  // showModalMessage('正在生成清单...', '', false);
 
   const payload = {
-    conversation_id: "",
+    conversation_id: "", // 后端会创建新的
     documenttype: formData.documentType,
     information: formData.information,
     requests: formData.requests,
@@ -340,63 +341,12 @@ const generateChecklist = async () => {
   };
 
   try {
-    const response = await fetch('http://47.98.215.181:8010/llmcenter/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authStore.token}` },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok || !response.body) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `HTTP 错误: ${response.status}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let interruptHandled = false;
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const parts = buffer.split('\n\n');
-      buffer = parts.pop() || '';
-
-      for (const part of parts) {
-        if (interruptHandled) continue;
-        const eventLine = part.split('\n').find(line => line.startsWith('event:'));
-        const dataLine = part.split('\n').find(line => line.startsWith('data:'));
-
-        if (eventLine && dataLine) {
-          const eventType = eventLine.substring(6).trim();
-          const dataJson = dataLine.substring(5).trim();
-          try {
-            const data = JSON.parse(dataJson);
-            if (data.conversation_id) {
-               documentStore.currentConversationId = data.conversation_id; // 修改Store
-            }
-            if (eventType === 'interrupt' && data.content_type === 'document_outline' && data.content) {
-              documentStore.checklistContent = data.content; // 修改Store
-              if (documentStore.currentConversationId) {
-                router.push('/document/checklist');
-                interruptHandled = true;
-                reader.cancel();
-                return;
-              }
-            }
-          } catch (e) {
-            console.error("解析流数据失败:", e);
-          }
-        }
-      }
-    }
-    if (!interruptHandled) {
-      showModalMessage('生成失败', '未能从服务器获取有效的内容清单。', true);
-    }
+    // 调用 store action，这个 action 是异步的，但我们不 await 它
+    documentStore.generateChecklistStream(payload);
+    // 立即导航到清单页面
+    router.push('/document/checklist');
   } catch (error: any) {
-    // 如果 Store Action 内部的同步代码出错（例如 token 获取失败），会在这里捕获
+    // 如果 store action 内部的同步代码出错（例如 token 获取失败），会在这里捕获
     showModalMessage('请求失败', error.message, true);
   }
 };

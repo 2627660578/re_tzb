@@ -18,6 +18,8 @@ export const useDocumentStore = defineStore('document', () => {
   const revisionHistory = ref<conversationsApi.Message[]>([]);
   const isHistoryLoading = ref(false); // 为历史记录加载添加独立的状态
 
+  const isChecklistGenerating = ref(false); 
+  const streamingChecklistContent = ref(''); 
   // --- Actions ---
 
   /**
@@ -248,6 +250,74 @@ export const useDocumentStore = defineStore('document', () => {
     }
   };
 
+  /**
+ * 新增：从创建页面发起请求，流式生成清单
+ * @param payload - 包含表单数据的对象
+ */
+  const generateChecklistStream = async (payload: any): Promise<void> => {
+    isChecklistGenerating.value = true;
+    streamingChecklistContent.value = '';
+    checklistContent.value = null;
+    error.value = null;
+
+    try {
+      const token = _getAuthToken();
+      const response = await fetch('http://47.98.215.181:8010/llmcenter/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok || !response.body) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP 错误: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          const eventLine = part.split('\n').find(line => line.startsWith('event:'));
+          const dataLine = part.split('\n').find(line => line.startsWith('data:'));
+
+          if (eventLine && dataLine) {
+            const eventType = eventLine.substring(6).trim();
+            const dataJson = dataLine.substring(5).trim();
+            try {
+              const data = JSON.parse(dataJson);
+              if (data.conversation_id) {
+                currentConversationId.value = data.conversation_id;
+              }
+
+              if (eventType === 'message' && data.chunk) {
+                streamingChecklistContent.value += data.chunk;
+              } else if (eventType === 'end') {
+                // 流结束时，将最终内容存入 checklistContent 以便解析
+                checklistContent.value = streamingChecklistContent.value;
+                isChecklistGenerating.value = false;
+                return; // 结束循环
+              }
+            } catch (e) {
+              console.error("解析清单流数据失败:", e);
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      error.value = err.message;
+      isChecklistGenerating.value = false;
+      throw err;
+    }
+  };
 
   return {
     // State
@@ -263,6 +333,8 @@ export const useDocumentStore = defineStore('document', () => {
     isHistoryLoading,
     checklistContent,
     currentConversationId,
+    isChecklistGenerating, 
+    streamingChecklistContent, 
     // Actions
     fetchConversations,
     fetchFinalDocument,
@@ -270,6 +342,7 @@ export const useDocumentStore = defineStore('document', () => {
     reviseDocumentWithAI,
     saveDocumentChanges,
     fetchAndSetHistoryData,
-    fetchRevisionHistory
+    fetchRevisionHistory,
+    generateChecklistStream,
   };
 });
