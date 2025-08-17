@@ -262,9 +262,18 @@ const downloadDocument = async (format) => {
       throw new Error(`不支持的下载格式: ${format}`);
     }
 
+    // --- 修正：直接从 store 获取发文机关和字号信息 ---
+    // 不再从 markdownContent 中解析，因为内容已经被过滤
+    const titleContent = documentStore.documentTitleInfo || '';
+    const docNoContent = documentStore.documentDocNoInfo || '';
+    
     const payload = {
       prompt: markdownContent,
       type: fileType,
+      information: [
+        { type: 'title', contant: titleContent },
+        { type: 'docNo', contant: docNoContent }
+      ]
     };
 
     // 调用新的API函数

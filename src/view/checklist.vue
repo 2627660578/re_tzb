@@ -172,27 +172,46 @@ const submitAndContinue = async () => {
 
   let contentParts: string[] = [];
   
-  // **核心改动**：从 sections 和 editorRefs 中收集数据
+  // 遍历所有 section 来提取数据
   sections.value.forEach((section, index) => {
     const editor = editorRefs.value[index];
     if (editor) {
-      contentParts.push(`### ${section.title.trim()}`);
-      
-      // 使用临时的 div 来解析 HTML 内容，这是一种安全可靠的方式
+      // 创建一个临时 div 来安全地解析 HTML 内容
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = editor.innerHTML; // 从编辑器DOM引用直接读取内容
+      tempDiv.innerHTML = editor.innerHTML;
       
       const lineDivs = tempDiv.querySelectorAll('div');
+      let sectionContentLines: string[] = [];
+
       lineDivs.forEach(lineDiv => {
-        const plainText = lineDiv.textContent?.trim();
-        if (plainText) {
-          contentParts.push(`- ${plainText}`);
+        // .textContent 会获取所有子节点（包括 <strong>）的文本
+        const fullText = lineDiv.textContent?.trim() || '';
+        
+        // 检查是否是特殊行
+        if (fullText.startsWith('发文机关标识：')) {
+          // 提取内容并存入 store
+          documentStore.documentTitleInfo = fullText.replace('发文机关标识：', '').trim();
+        } else if (fullText.startsWith('发文字号：')) {
+          // 提取内容并存入 store
+          documentStore.documentDocNoInfo = fullText.replace('发文字号：', '').trim();
+        } else {
+          // 其他内容照常添加到 sectionContentLines
+          if (fullText) {
+            sectionContentLines.push(`- ${fullText}`);
+          }
         }
       });
+
+      // 如果这个 section 在过滤掉特殊字段后仍有内容，则添加到最终内容中
+      if (sectionContentLines.length > 0) {
+        contentParts.push(`### ${section.title.trim()}`);
+        contentParts.push(sectionContentLines.join('\n'));
+      }
     }
   });
   
-  const finalContent = contentParts.join('\n');
+  // 使用双换行符来分隔不同的 section，符合 Markdown 规范
+  const finalContent = contentParts.join('\n\n');
   
   const conversationId = documentStore.currentConversationId; // 从 store 获取 ID
   if (!conversationId) {
@@ -201,10 +220,12 @@ const submitAndContinue = async () => {
   }
 
   try {
+    // 调用 store action，该 action 会调用 resume 接口
     await documentStore.generateDocumentFromChecklist({
       conversation_id: conversationId,
       content: finalContent,
     });
+    // 成功后跳转到文件展示页
     router.push(`/showfile/${conversationId}`);
   } catch (err: any) {
     alert(`启动文档生成失败: ${err.message}`);

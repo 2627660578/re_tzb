@@ -20,6 +20,8 @@ export const useDocumentStore = defineStore('document', () => {
 
   const isChecklistGenerating = ref(false); 
   const streamingChecklistContent = ref(''); 
+  const documentTitleInfo = ref<string>(''); // 存储发文机关标识
+  const documentDocNoInfo = ref<string>(''); // 存储发文字号
   // --- Actions ---
 
   /**
@@ -258,6 +260,8 @@ export const useDocumentStore = defineStore('document', () => {
     isChecklistGenerating.value = true;
     streamingChecklistContent.value = '';
     checklistContent.value = null;
+    documentTitleInfo.value = ''; // 开始生成新清单时重置
+    documentDocNoInfo.value = '';
     error.value = null;
 
     try {
@@ -335,6 +339,8 @@ export const useDocumentStore = defineStore('document', () => {
     currentConversationId,
     isChecklistGenerating, 
     streamingChecklistContent, 
+    documentTitleInfo,
+    documentDocNoInfo,
     // Actions
     fetchConversations,
     fetchFinalDocument,

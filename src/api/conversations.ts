@@ -98,10 +98,16 @@ export interface HistoryDataResponse {
   items: HistoryDataItem[];
 }
 
-//为文件下载接口定义请求类型
+// 为文件下载接口定义请求类型
+export interface DownloadInfoItem {
+  type: 'title' | 'docNo';
+  contant: string;
+}
+
 export interface DownloadRequest {
   prompt: string;
   type: 'pdf' | 'docx';
+  information: DownloadInfoItem[];
 }
 // --- API 请求函数 ---
 
