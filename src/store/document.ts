@@ -22,6 +22,8 @@ export const useDocumentStore = defineStore('document', () => {
   const streamingChecklistContent = ref(''); 
   const documentTitleInfo = ref<string>(''); // 存储发文机关标识
   const documentDocNoInfo = ref<string>(''); // 存储发文字号
+  const currentDocumentType = ref<string>(''); // 新增：存储当前公文类型
+  const formatFileReferences = ref<{ file_id: string }[]>([]); // 新增：存储格式文件引用
   // --- Actions ---
 
   /**
@@ -271,10 +273,16 @@ export const useDocumentStore = defineStore('document', () => {
     isChecklistGenerating.value = true;
     streamingChecklistContent.value = '';
     checklistContent.value = null;
-    documentTitleInfo.value = ''; // 开始生成新清单时重置
+    documentTitleInfo.value = ''; 
     documentDocNoInfo.value = '';
     error.value = null;
 
+    // 新增：从 payload 中提取并存储所需信息
+    currentDocumentType.value = payload.documenttype || '';
+    formatFileReferences.value = (payload.references || [])
+      .filter((ref: any) => ref.type === 'formfile')
+      .map((ref: any) => ({ file_id: ref.file_id }));
+    
     try {
       const token = _getAuthToken();
       const response = await fetch('http://47.98.215.181:8010/llmcenter/v1/chat/completions', {
@@ -352,6 +360,8 @@ export const useDocumentStore = defineStore('document', () => {
     streamingChecklistContent, 
     documentTitleInfo,
     documentDocNoInfo,
+    currentDocumentType, // 导出新状态
+    formatFileReferences, // 导出新状态
     // Actions
     fetchConversations,
     fetchFinalDocument,

@@ -71,6 +71,8 @@ import { ref, onMounted,onBeforeUpdate,watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useDocumentStore } from '../store/document'; // 导入 document store
 
+import * as conversationsApi from '../api/conversations';
+
 // --- 类型定义 ---
 interface Section {
   title: string;
@@ -167,6 +169,7 @@ const updateToolbarState = (event: Event, index: number) => {
 };
 
 
+
 const submitAndContinue = async () => {
   if (documentStore.isGenerating) return;
 
@@ -176,55 +179,56 @@ const submitAndContinue = async () => {
   sections.value.forEach((section, index) => {
     const editor = editorRefs.value[index];
     if (editor) {
-      // 创建一个临时 div 来安全地解析 HTML 内容
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = editor.innerHTML;
-      
       const lineDivs = tempDiv.querySelectorAll('div');
-      let sectionContentLines: string[] = [];
-
+      
+      let sectionLines: string[] = [];
       lineDivs.forEach(lineDiv => {
-        // .textContent 会获取所有子节点（包括 <strong>）的文本
         const fullText = lineDiv.textContent?.trim() || '';
         
-        // 检查是否是特殊行
         if (fullText.startsWith('发文机关标识：')) {
-          // 提取内容并存入 store
           documentStore.documentTitleInfo = fullText.replace('发文机关标识：', '').trim();
         } else if (fullText.startsWith('发文字号：')) {
-          // 提取内容并存入 store
           documentStore.documentDocNoInfo = fullText.replace('发文字号：', '').trim();
-        } else {
-          // 其他内容照常添加到 sectionContentLines
-          if (fullText) {
-            sectionContentLines.push(`- ${fullText}`);
-          }
+        } else if (fullText) {
+          // 将 "标签：内容" 格式的行拼接起来
+          sectionLines.push(fullText);
         }
       });
 
-      // 如果这个 section 在过滤掉特殊字段后仍有内容，则添加到最终内容中
-      if (sectionContentLines.length > 0) {
-        contentParts.push(`### ${section.title.trim()}`);
-        contentParts.push(sectionContentLines.join('\n'));
+      if (sectionLines.length > 0) {
+        // 将每个 section 的内容拼接成一个长字符串
+        contentParts.push(`${section.title.trim()}：${sectionLines.join(' ')}`);
       }
     }
   });
   
-  // 使用双换行符来分隔不同的 section，符合 Markdown 规范
-  const finalContent = contentParts.join('\n\n');
+  // 将所有 section 的内容用空格连接
+  const finalContent = contentParts.join(' ');
   
-  const conversationId = documentStore.currentConversationId; // 从 store 获取 ID
+  const conversationId = documentStore.currentConversationId;
   if (!conversationId) {
     alert("错误：无法在Store中找到会话ID，无法继续。");
     return;
   }
 
   try {
-    // 调用 store action，该 action 会调用 resume 接口
-    await documentStore.generateDocumentFromChecklist({
+    // 构建符合新格式的 payload
+    const payload: conversationsApi.ResumeRequest = {
       conversation_id: conversationId,
+      documenttype: documentStore.currentDocumentType,
       content: finalContent,
-    });
+      template_id: "", // 根据要求，此字段为空
+      references: documentStore.formatFileReferences.map(ref => ({
+        type: 'file', // 根据要求，type 固定为 'file'
+        file_id: ref.file_id
+      }))
+    };
+
+    // 调用 store action
+    await documentStore.generateDocumentFromChecklist(payload);
+    
     // 成功后跳转到文件展示页
     router.push(`/showfile/${conversationId}`);
   } catch (err: any) {

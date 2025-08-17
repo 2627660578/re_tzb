@@ -49,11 +49,13 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 bg-white">
-                  <tr v-if="filteredDocuments.length === 0">
-                    <td colspan="3" class="text-center py-10 text-gray-500">暂无文档</td>
+                  <tr v-if="paginatedDocuments.length === 0">
+                    <td colspan="3" class="text-center py-10 text-gray-500">
+                      {{ searchQuery ? '未找到匹配的文档' : '暂无文档' }}
+                    </td>
                   </tr>
                   <tr 
-                    v-for="doc in filteredDocuments" 
+                    v-for="doc in paginatedDocuments" 
                     :key="doc.conversation_id"
                     class="group cursor-pointer hover:bg-gray-50"
                     @click="viewDocument(doc)"
@@ -78,6 +80,45 @@
                 </tbody>
               </table>
             </div>
+
+            <!-- 新增：分页控件 -->
+            <div v-if="totalPages > 1" class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+              <div class="flex flex-1 justify-between sm:hidden">
+                <button @click="prevPage" :disabled="currentPage === 1" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">上一页</button>
+                <button @click="nextPage" :disabled="currentPage === totalPages" class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">下一页</button>
+              </div>
+              <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-sm text-gray-700">
+                    第
+                    <span class="font-medium">{{ (currentPage - 1) * itemsPerPage + 1 }}</span>
+                    到
+                    <span class="font-medium">{{ Math.min(currentPage * itemsPerPage, filteredDocuments.length) }}</span>
+                    条，共
+                    <span class="font-medium">{{ filteredDocuments.length }}</span>
+                    条
+                  </p>
+                </div>
+                <div>
+                  <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                    <button @click="prevPage" :disabled="currentPage === 1" class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                      <span class="sr-only">上一页</span>
+                      <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                    <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">第 {{ currentPage }} / {{ totalPages }} 页</span>
+                    <button @click="nextPage" :disabled="currentPage === totalPages" class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                      <span class="sr-only">下一页</span>
+                      <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                      </svg>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -123,7 +164,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted,watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getConversationsList, getConversationDetails } from '../api/conversations'
 import { useDocumentStore } from '../store/document'; // 导入新的 store
@@ -143,6 +184,10 @@ const isModalOpen = ref(false)
 const selectedDocument = ref(null)
 const modalContentLoading = ref(false)
 const modalError = ref(null)
+
+const currentPage = ref(1);
+const itemsPerPage = 10;
+
 
 // --- 生命周期钩子 ---
 onMounted(() => {
@@ -170,7 +215,11 @@ async function fetchDocuments() {
 // --- 计算属性：用于搜索过滤 ---
 const filteredDocuments = computed(() => {
   // 直接从 store 获取会话列表
-  const docs = documentStore.conversations;
+  const docs = [...documentStore.conversations];
+
+  // 按时间从新到旧排序
+  docs.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
   if (!searchQuery.value) {
     return docs;
   }
@@ -179,6 +228,29 @@ const filteredDocuments = computed(() => {
   );
 });
 
+//计算总页数
+const totalPages = computed(() => {
+  return Math.ceil(filteredDocuments.value.length / itemsPerPage);
+});
+
+// 根据分页和过滤结果，计算当前页要显示的数据
+const paginatedDocuments = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return filteredDocuments.value.slice(start, end);
+});
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+  }
+}
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+  }
+}
 // 格式化日期
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
@@ -196,6 +268,9 @@ const viewDocument = (doc) => {
   router.push(`/showfile/${doc.conversation_id}`)
 }
 
+watch(searchQuery, () => {
+  currentPage.value = 1;
+});
 
 </script>
 

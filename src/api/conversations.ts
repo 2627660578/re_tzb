@@ -67,11 +67,19 @@ export interface GenerateDocumentRequest {
   content: string; // 这里是用户确认后的大纲内容
 }
 
-// 为 resume 接口定义请求和响应类型
+//为 resume 接口中的 reference 项定义类型
+export interface ReferenceItem {
+  type: 'file';
+  file_id: string;
+}
+
+
 export interface ResumeRequest {
   conversation_id: string;
+  documenttype: string;
   content: string;
-  template_id?: string;
+  template_id: string;
+  references: ReferenceItem[];
 }
 
 export interface StreamEndData {
@@ -83,6 +91,7 @@ export interface StreamEndData {
 export interface HistoryFileReference {
   file_id: string;
   filename: string;
+  function: 'file' | 'formfile'; // 新增：文件功能分类
 }
 
 export interface HistoryDataItem {

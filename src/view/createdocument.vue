@@ -33,32 +33,22 @@
                   <option>议案</option>
                 </select>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-[var(--text-primary)] mb-1.5" for="requests">生成要求</label>
-                <!-- 使用 v-model 绑定数据 -->
-                <textarea 
-                  v-model="formData.requests" 
-                  id="requests" 
-                  class="block w-full rounded-md border-[var(--input-border-color)] shadow-sm focus:border-[var(--input-focus-border-color)] focus:ring focus:ring-[var(--input-focus-border-color)] focus:ring-opacity-50 transition p-3 placeholder:text-gray-400 text-base" 
-                  :placeholder="requestsPlaceholder" 
-                  rows="4"
-                ></textarea>
-              </div>
+
               <div id="drop-zone-wrapper">
-                <label class="block text-sm font-medium text-[var(--text-primary)] mb-1.5" for="information">现有信息</label>
-                <!-- 监听拖拽事件 -->
+                <label class="block text-sm font-medium text-[var(--text-primary)] mb-1.5" for="information">写作信息</label>
+                <!-- 监听拖拽事件，并传递 'information' 作为来源 -->
                 <div 
                   id="drop-zone"
-                  class="relative p-4 border-2 border-dashed border-[var(--input-border-color)] rounded-md transition-colors"
+                  class="relative p-4 border border-solid border-[var(--input-border-color)] rounded-md transition-colors"
                   :class="{ 'drag-over': isDragOver }"
                   @dragenter.prevent="isDragOver = true"
                   @dragover.prevent="isDragOver = true"
                   @dragleave.prevent="isDragOver = false"
-                  @drop.prevent="handleDrop"
+                  @drop.prevent="handleDrop($event, 'information')"
                 >
-                  <textarea v-model="formData.information" id="information" class="block w-full border-none focus:ring-0 p-0 placeholder:text-gray-400 text-base bg-transparent resize-none" placeholder="在此处粘贴或输入文本，或拖拽文件到此区域" rows="8"></textarea>
-                  <!-- 隐藏的 input 用于点击上传 -->
-                  <input type="file" ref="fileInputRef" @change="handleFileSelect" class="hidden" multiple accept=".jpg,.jpeg,.png,.txt,.md,.csv,.docx,.pdf,.xlsx,.pptx">
+                  <textarea v-model="formData.information" id="information" class="block w-full border-none focus:ring-0 focus:outline-none p-0 placeholder:text-gray-400 text-base bg-transparent resize-none" :placeholder="requestsPlaceholder"  rows="8"></textarea>
+                  <!-- 隐藏的 input 用于点击上传，并传递 'information' 作为来源 -->
+                  <input type="file" ref="fileInputRef" @change="handleFileSelect($event, 'information')" class="hidden" multiple accept=".jpg,.jpeg,.png,.txt,.md,.csv,.docx,.pdf,.xlsx,.pptx">
                   <!-- 使用 @click 替代 addEventListener -->
                   <button type="button" @click="fileInputRef?.click()" class="absolute bottom-2 right-2 text-gray-400 hover:text-[var(--primary-color)] transition-colors p-1 bg-white/50 backdrop-blur-sm rounded-full">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
@@ -66,9 +56,9 @@
                 </div>
               </div>
               
-              <!-- 文件上传列表 (使用 v-for 渲染) -->
+              <!-- 文件上传列表 (现在只显示 "写作信息" 的文件) -->
               <div class="space-y-3">
-                <div v-for="file in uploadedFiles" :key="file.tempId" class="file-item p-3 rounded-lg border border-gray-200 bg-white shadow-sm">
+                <div v-for="file in informationFiles" :key="file.tempId" class="file-item p-3 rounded-lg border border-gray-200 bg-white shadow-sm">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3 overflow-hidden">
                       <svg class="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -93,11 +83,62 @@
                 </div>
               </div>
 
+              <div>          
+                <label class="block text-sm font-medium text-[var(--text-primary)] mb-1.5" for="requests-files">格式样例文件</label>
+                <!-- 更新样式，并包含文件列表 -->
+                <div 
+                  class="relative rounded-md transition-colors flex flex-col justify-center min-h-[120px]"
+                  :class="{ 'drag-over': isRequestsDragOver }"
+                  @dragenter.prevent="isRequestsDragOver = true"
+                  @dragover.prevent="isRequestsDragOver = true"
+                  @dragleave.prevent="isRequestsDragOver = false"
+                  @drop.prevent="handleDrop($event, 'format')"
+                >
+                  <!-- 仅在没有格式文件时显示提示 -->
+                  <div v-if="formatFiles.length === 0" class="text-center text-gray-400 pointer-events-none">
+                    <p>放入样式文件,用于文章写作的格式参考</p>
+                  </div>
+                  
+                  <!-- 格式样例文件列表 -->
+                  <div v-else class="w-full space-y-3">
+                     <div v-for="file in formatFiles" :key="file.tempId" class="file-item p-3 rounded-lg border border-gray-200 bg-white shadow-sm">
+                        <div class="flex items-center justify-between">
+                          <div class="flex items-center gap-3 overflow-hidden">
+                            <svg class="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <span class="text-sm font-medium text-gray-800 truncate">{{ file.name }}</span>
+                          </div>
+                          <button type="button" @click="removeFile(file.tempId)" class="text-gray-400 hover:text-[var(--error-color)]">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                          </button>
+                        </div>
+                        <div class="mt-2">
+                          <div class="progress-bar-bg">
+                            <div class="progress-bar" :style="{ width: file.progress + '%' }" :class="{ 
+                              'bg-[var(--success-color)]': file.status === 'success',
+                              'bg-[var(--error-color)]': file.status === 'error',
+                              'bg-[var(--primary-color)]': file.status === 'uploading'
+                            }"></div>
+                          </div>
+                          <div class="status-text text-xs text-right mt-1" :class="{ 'text-[var(--error-color)]': file.status === 'error', 'text-gray-500': file.status !== 'error' }">
+                            {{ file.statusText }}
+                          </div>
+                        </div>
+                      </div>
+                  </div>
+
+                  <!-- 上传按钮 -->
+                  <button type="button" @click="requestsFileInputRef?.click()" class="absolute bottom-2 right-2 text-gray-400 hover:text-[var(--primary-color)] transition-colors p-1 bg-white/50 backdrop-blur-sm rounded-full">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                  </button>
+                </div>
+              </div>
+
               <div class="flex justify-end pt-2">
                 <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 border border-transparent text-base font-semibold rounded-md text-white bg-[var(--primary-color)] hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-color)] transition-all shadow-lg">
                   生成清单
                 </button>
               </div>
+  
             </form>
           </div>
         </div>
@@ -131,6 +172,7 @@ interface UploadedFile {
   progress: number;
   status: 'uploading' | 'success' | 'error';
   statusText: string;
+  origin: 'information' | 'format'; // 新增：记录文件来源
   backendId?: string; // 后端返回的真实ID
   url?: string;
 }
@@ -140,7 +182,9 @@ const router = useRouter();
 const authStore = useAuthStore();
 const documentStore = useDocumentStore(); // 初始化 document store
 const fileInputRef = ref<HTMLInputElement | null>(null);
+const requestsFileInputRef = ref<HTMLInputElement | null>(null);
 const isDragOver = ref(false);
+const isRequestsDragOver = ref(false); 
 
 // 表单数据
 const formData = reactive({
@@ -167,7 +211,7 @@ const placeholderMap: { [key: string]: string } = {
 };
 
 const requestsPlaceholder = computed(() => {
-  const defaultPlaceholder = '例如：语气严肃正式，突出会议的重要性...';
+  const defaultPlaceholder = '在此处粘贴或输入文本，或拖拽文件到此区域';
   // 如果 formData.documentType 在我们的映射表中有对应的值，就返回它，否则返回默认值
   return placeholderMap[formData.documentType] || defaultPlaceholder;
 });
@@ -205,6 +249,8 @@ onMounted(() => {
         statusText: '来自历史记录',
         backendId: ref.file_id,
         url: ref.file_id,
+        // **核心改动：根据 function 属性设置 origin**
+        origin: ref.function === 'formfile' ? 'format' : 'information',
       }));
     } else {
       // 如果 references 是 null 或其他非数组类型，则将文件列表设置为空
@@ -219,22 +265,23 @@ onMounted(() => {
 // --- 方法 ---
 
 // 文件处理
-const handleFileSelect = (event: Event) => {
+const handleFileSelect = (event: Event, origin: 'information' | 'format') => {
   const target = event.target as HTMLInputElement;
   if (target.files) {
-    handleFiles(target.files);
+    handleFiles(target.files, origin);
   }
 };
 
-const handleDrop = (event: DragEvent) => {
+const handleDrop = (event: DragEvent, origin: 'information' | 'format') => {
   isDragOver.value = false;
+  isRequestsDragOver.value = false; // 确保两个拖拽状态都被重置
   if (event.dataTransfer?.files) {
-    handleFiles(event.dataTransfer.files);
+    handleFiles(event.dataTransfer.files, origin);
   }
 };
 
-const handleFiles = (files: FileList) => {
-  [...files].forEach(uploadFile);
+const handleFiles = (files: FileList, origin: 'information' | 'format') => {
+  [...files].forEach(file => uploadFile(file, origin));
 };
 
 const removeFile = (tempId: string) => {
@@ -242,7 +289,7 @@ const removeFile = (tempId: string) => {
 };
 
 // 文件上传逻辑 (使用 XMLHttpRequest)
-const uploadFile = (file: File) => {
+const uploadFile = (file: File, origin: 'information' | 'format') => {
   const url = 'http://47.98.215.181:8010/llmcenter/v1/files/upload';
   const formData = new FormData();
   formData.append('file', file);
@@ -254,6 +301,7 @@ const uploadFile = (file: File) => {
     progress: 0,
     status: 'uploading',
     statusText: '正在上传...',
+    origin: origin, // 保存文件来源
   };
   uploadedFiles.value.push(newFile);
 
@@ -332,14 +380,17 @@ const generateChecklist = async () => {
     conversation_id: "", // 后端会创建新的
     documenttype: formData.documentType,
     information: formData.information,
-    requests: formData.requests,
+    requests: formData.requests, // 已移除
     use_knowledge_base: false,
     knowledge_base_id: "",
     references: uploadedFiles.value
       .filter(f => f.status === 'success' && f.url)
-      .map(f => ({ type: 'file', file_id: f.url }))
+      .map(f => ({ 
+        // 根据文件来源设置 type
+        type: f.origin === 'format' ? 'formfile' : 'file', 
+        file_id: f.url 
+      }))
   };
-
   try {
     // 调用 store action，这个 action 是异步的，但我们不 await 它
     documentStore.generateChecklistStream(payload);
@@ -351,6 +402,13 @@ const generateChecklist = async () => {
   }
 };
 
+const informationFiles = computed(() => 
+  uploadedFiles.value.filter(file => file.origin === 'information')
+);
+
+const formatFiles = computed(() => 
+  uploadedFiles.value.filter(file => file.origin === 'format')
+);
 </script>
 
 <style scoped>
